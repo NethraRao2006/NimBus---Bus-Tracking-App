@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Bus Tracking System</title>
+    <link rel="stylesheet" href="style.css">
+    
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+<script src="passenger.js"></script>
+</head>
+<body>
+
+    <h1>Real-Time Bus Tracking System</h1>
+    <p class="subtitle">
+        Track your bus in real-time, get instant notifications, and never miss your ride.
+    </p>
+
+    <div class="card-container">
+        <div class="card passenger">
+            <div class="icon">🧍</div>
+            <h3>Passenger</h3>
+            <p>Track buses in real-time and get arrival notifications</p>
+            <button class="btn btn-passenger" onclick="goToPassengerPortal()">Get Started</button>
+        </div>
+
+        <div class="card driver">
+            <div class="icon">🚌</div>
+            <h3>Driver</h3>
+            <p>Update bus status and manage route information</p>
+            <button class="btn btn-driver" onclick="openForm('Driver')">Get Started</button>
+        </div>
+
+        <div class="card authority">
+            <div class="icon">🛡</div>
+            <h3>Authority</h3>
+            <p>Monitor all drivers and bus operations</p>
+            <button class="btn btn-authority" onclick="openForm('Authority')">Get Started</button>
+        </div>
+    </div>
+
+    <footer></footer>
+
+    <div class="popup" id="popupForm">
+        <div class="popup-content">
+            <span class="close-btn" onclick="closeForm()">&times;</span>
+            <h2 id="formTitle">Login / Signup</h2>
+            
+            <div class="mode-toggle">
+                <button id="loginModeBtn" class="toggle-btn active" onclick="setMode('login')">Login</button>
+                <button id="signupModeBtn" class="toggle-btn" onclick="setMode('signup')">Signup</button>
+            </div>
+
+            <form id="userForm" onsubmit="return handleAuth(event)">
+                <input type="text" id="username" placeholder="Enter username (Optional)">
+                <input type="email" id="email" placeholder="Enter email" required>
+                <input type="password" id="password" placeholder="Enter password" required>
+                <button type="submit" class="submit-btn" id="submitButton">Login</button>
+            </form>
+            <p id="errorMsg"></p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

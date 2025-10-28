@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Portal</title>
+    <link rel="stylesheet" href="style.css"> 
+   <style>
+    /* Driver specific styles */
+    body { background-color: #f7fff7; }
+    .driver-container { 
+        max-width: 600px; 
+        margin-top: 50px; 
+        padding: 20px; 
+        background: #fff; 
+        border-radius: 10px; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+        border-left: 6px solid #4caf50; 
+    }
+    h2 { color: #4caf50; margin-bottom: 20px; }
+    label { display: block; margin-top: 15px; font-weight: 600; color: #333; }
+    select, input[type="text"], button { 
+        width: 100%; 
+        padding: 10px; 
+        margin-top: 5px; 
+        border-radius: 5px; 
+        border: 1px solid #ccc; 
+        font-size: 16px; 
+    }
+    #startTripBtn { 
+        background: #4caf50; 
+        color: white; 
+        border: none; 
+        cursor: pointer; 
+        margin-top: 30px; 
+    }
+    #startTripBtn:disabled { 
+        background: #a5d6a7; 
+        cursor: not-allowed; 
+    }
+    #tripStatus { 
+        margin-top: 20px; 
+        padding: 10px; 
+        background-color: #e8f5e9; 
+        border-left: 5px solid #4caf50; 
+        font-weight: 500; 
+    }
+    .status-btn-group button { margin-top: 10px; }
+    
+    /* === LOGOUT BUTTON STYLES === */
+    #driverLogoutBtn { 
+        width: auto; 
+        padding: 8px 15px; 
+        font-size: 0.9rem;
+        background-color: #e0e0e0; /* Light Grey */
+        color: #333;
+        border: 1px solid #bdbdbd;
+        cursor: pointer; 
+        margin-top: 0; /* Remove top margin for inline alignment */
+        font-weight: 600; /* Bolder text */
+        transition: all 0.2s;
+    }
+    #driverLogoutBtn:hover {
+        background-color: #bdbdbd; /* Darken on hover */
+        color: #000;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    #driverLogoutBtn:active {
+        background-color: #9e9e9e; /* Darker when clicked */
+    }
+    /* ============================ */
+</style>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    
+    <div class="driver-container">
+        <h2 style="display: flex; justify-content: space-between; align-items: center;">
+            Driver Portal
+            <button id="driverLogoutBtn" onclick="driverLogout()" style="width: auto; padding: 5px 15px; font-size: 0.9rem;">Logout</button>
+        </h2>
+        <p id="driverWelcome">Welcome, Driver!</p>
+
+        <section id="startTripSection">
+    <select id="routeSelect" onchange="loadSchedulesForSelectedRoute()"></select>
+    <select id="vehicleSelect"></select>
+    <select id="scheduleSelect"></select>
+
+    <div style="margin-top: 15px;">
+        <button id="recordDepartureBtn" onclick="recordActualDeparture()" disabled>Record Actual Departure</button>
+        <p id="departureTimeDisplay" style="font-weight: bold; color: #000000; margin-top: 5px;"></p>
+    </div>
+    
+    <button id="startTripBtn" onclick="startTrip()" disabled>Start Trip</button>
+</section>
+
+        <div id="tripStatus" style="display: none;">
+            <p><strong>Active Trip!</strong></p>
+            <p id="currentTripId">Trip ID: N/A</p>
+            <p id="currentVehicle">Vehicle: N/A</p>
+            <p id="currentRoute">Route: N/A</p>
+            <p>Live Tracking: <span id="trackingStatus">STOPPED</span></p>
+                <p id="currentLocationDisplay">Location: N/A</p> 
+
+            <hr style="margin: 15px 0;">
+            
+            <h4>Current Status: <span id="displayStatus" style="font-weight: bold;">Ontime</span></h4>
+            
+            <div class="status-btn-group" style="display: flex; gap: 10px; margin: 10px 0;">
+                <button onclick="updateStatus('Ontime', '')" class="btn" style="background: #4caf50; flex: 1; color: white;">On-time</button>
+                <button onclick="document.getElementById('delayReasonSection').style.display='block';" class="btn" style="background: #ff9800; flex: 1; color: white;">Delayed</button>
+                <button onclick="updateStatus('Cancelled', 'Driver Cancellation')" class="btn" style="background: #f44336; flex: 1; color: white;">Cancelled</button>
+            </div>
+
+            <div id="delayReasonSection" style="display: none; padding: 10px; border: 1px solid #ff9800; border-radius: 5px; margin-top: 10px;">
+                <label for="delayReasonSelect" style="font-weight: normal; margin-top: 0;">Reason for Delay:</label>
+                <select id="delayReasonSelect" required style="margin-bottom: 10px;">
+                    <option value="">Select Reason</option>
+                    <option value="Traffic Congestion">Traffic Congestion</option>
+                    <option value="Mechanical Issue">Mechanical Issue</option>
+                    <option value="Road Closure/Diversion">Road Closure/Diversion</option>
+                    <option value="Heavy Passenger Load">Heavy Passenger Load</option>
+                </select>
+                <button id="delayStatusBtn" class="btn submit-btn" style="background: #ff9800; padding: 5px; color: white;" 
+                        onclick="updateStatus('Delayed', document.getElementById('delayReasonSelect').value)">Confirm Delay</button>
+            </div>
+            <button id="endTripBtn" onclick="endTrip()" class="submit-btn" style="background-color: #d32f2f; margin-top: 20px;">End Trip</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script> 
+    <script src="driver.js"></script> 
+</body>
+</html>

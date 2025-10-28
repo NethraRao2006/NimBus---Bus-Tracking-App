@@ -1,0 +1,26 @@
+[
+    {
+        "busName": "City Bus Alpha",
+        "routeName": "Route 101",
+        "driverName": "Alice Smith",
+        "driverId": "D1001",
+        "licensePlate": "XYZ 4567",
+        "status": "Moving (30 km/h)" 
+    },
+    {
+        "busName": "City Bus Beta",
+        "routeName": "Route 205",
+        "driverName": "Bob Johnson",
+        "driverId": "D1002",
+        "licensePlate": "ABC 1234",
+        "status": "Idle (At Depot)" 
+    },
+    {
+        "busName": "City Bus Gamma",
+        "routeName": "Route 312",
+        "driverName": "Charlie Brown",
+        "driverId": "D1003",
+        "licensePlate": "BUS 888",
+        "status": "Offline" 
+    }
+]

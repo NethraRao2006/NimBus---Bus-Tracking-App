@@ -3,13 +3,13 @@
 
 let currentDriverId = null;
 let activeTripId = null; // Stores the auto-generated ID of the current trip
-let trackingInterval = null; // Holds the reference for stopping MOCK location updates (clearInterval)
-let locationWatchId = null; // Holds the reference for stopping REAL GPS location updates (clearWatch) 
+let trackingInterval = null; // Holds the reference for stopping MOCK location updates
+let locationWatchId = null; // Holds the reference for stopping REAL GPS location updates
 
 // --- NEW VARIABLE TO STORE ACTUAL DEPARTURE TIME ---
 let actualDepartureTimestamp = null; 
 
-// --- MOCK LOCATION VARIABLES (Adjust these for your testing area) ---
+// --- MOCK LOCATION VARIABLES (Used only if useMock is true) ---
 let currentMockLat = 12.7443; 
 let currentMockLng = 75.0679;
 let mockMoveStep = 0.0001; 
@@ -17,22 +17,28 @@ let mockMoveDirection = 0;
 // ------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Check if the user is logged in (Driver)
-    auth.onAuthStateChanged(user => {
-        if (user && user.uid) {
-            currentDriverId = user.uid;
-            document.getElementById('driverWelcome').textContent = `Welcome, ${user.email}!`;
-            loadInitialData();
-        } else {
-            alert("You must be logged in as a Driver to access this page.");
-            window.location.href = 'index.html';
-        }
-    });
+    // 1. Check if the user is logged in (Driver)
+    auth.onAuthStateChanged(user => {
+        if (user && user.uid) {
+            currentDriverId = user.uid;
+            document.getElementById('driverWelcome').textContent = `Welcome, ${user.email}!`;
+            loadInitialData();
+        } else {
+            alert("You must be logged in as a Driver to access this page.");
+            window.location.href = 'index.html';
+        }
+    });
     
-    // Add event listener for the new "Record Departure" button (assuming ID is 'recordDepartureBtn')
+    // Add event listener for the new "Record Departure" button
     const recordBtn = document.getElementById('recordDepartureBtn');
     if (recordBtn) {
         recordBtn.addEventListener('click', recordActualDeparture);
+    }
+
+    // Add event listener for the Start Trip button
+    const startBtn = document.getElementById('startTripBtn');
+    if (startBtn) {
+        startBtn.addEventListener('click', startTrip);
     }
 });
 
@@ -44,12 +50,17 @@ async function loadInitialData() {
     const routeSelect = document.getElementById('routeSelect');
     const vehicleSelect = document.getElementById('vehicleSelect');
     const scheduleSelect = document.getElementById('scheduleSelect');
-    const recordBtn = document.getElementById('recordDepartureBtn'); // Get the button
+    const recordBtn = document.getElementById('recordDepartureBtn');
 
     routeSelect.innerHTML = '<option value="">Select Route</option>';
     vehicleSelect.innerHTML = '<option value="">Select Vehicle</option>';
     scheduleSelect.innerHTML = '<option value="">Select a Route First</option>';
     if (recordBtn) recordBtn.disabled = true; // Disable initially
+    
+    // Clear any previous departure time display on initial load
+    const departureTimeDisplay = document.getElementById('departureTimeDisplay');
+    if (departureTimeDisplay) departureTimeDisplay.textContent = ''; 
+    actualDepartureTimestamp = null; // Reset state
 
     try {
         const routesSnapshot = await db.collection('routes').get();
@@ -66,12 +77,10 @@ async function loadInitialData() {
         
         routeSelect.addEventListener('change', loadSchedulesForSelectedRoute);
         vehicleSelect.addEventListener('change', checkStartButtonEligibility);
-        // Add listener for Schedule change
         scheduleSelect.addEventListener('change', checkStartButtonEligibility);
         
-        // This is the line that caused the ReferenceError. 
-        // The function definition must exist below.
-        checkActiveTripPersistence(); 
+        // Check if the driver has an active trip to restore the session
+        await checkActiveTripPersistence(); 
 
     } catch (error) {
         console.error("Error loading initial data:", error);
@@ -131,20 +140,17 @@ function checkStartButtonEligibility() {
     const recordBtn = document.getElementById('recordDepartureBtn');
     const isReady = (routeId && vehicleId && scheduleSlotId);
 
-    // Only enable Start Trip button if all are selected AND the time has been recorded
+    // Disable the Start Trip button if not all are selected OR if time hasn't been recorded
     startTripBtn.disabled = !(isReady && actualDepartureTimestamp); 
     
-    // Enable the Record Departure button if all selections are made
-    if (recordBtn) recordBtn.disabled = !isReady || !!actualDepartureTimestamp; // Disable if time already recorded
+    // Disable the Record Departure button if selections are incomplete OR if time is already recorded
+    if (recordBtn) recordBtn.disabled = !isReady || !!actualDepartureTimestamp; 
 }
 
 // ----------------------------------------------------------------------
-// RESTORED FUNCTION: checkActiveTripPersistence
+// PERSISTENCE AND UI RESTORATION
 // ----------------------------------------------------------------------
-/**
- * Checks Firestore for an existing active trip for the current driver.
- * If found, restores the UI and restarts location tracking.
- */
+
 async function checkActiveTripPersistence() {
     if (!currentDriverId) return;
     
@@ -160,7 +166,7 @@ async function checkActiveTripPersistence() {
         activeTripId = existingTrip.id;
         
         restoreTripUI(activeTripId, tripData);
-        startLocationTracking(tripData.last_known_location); // Pass last known location for starting
+        startLocationTracking(tripData.last_known_location); 
         alert(`Active trip ${activeTripId.substring(0, 6)}... restored after page reload.`);
     }
 }
@@ -178,18 +184,18 @@ function restoreTripUI(tripId, data) {
 
 
 // ----------------------------------------------------------------------
-// NEW FUNCTION: Record Actual Departure Time
+// RECORD DEPARTURE & START TRIP FUNCTIONS
 // ----------------------------------------------------------------------
 
 function recordActualDeparture() {
     const recordBtn = document.getElementById('recordDepartureBtn');
     const displayElement = document.getElementById('departureTimeDisplay'); 
 
-    // Store the current time as a Firebase Timestamp (will be null if not yet clicked)
+    // Store the current time as a Firebase Timestamp 
     actualDepartureTimestamp = firebase.firestore.Timestamp.now(); 
     
     const now = new Date();
-    const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
     if (displayElement) {
         displayElement.textContent = `Actual Departure: ${timeString}`;
@@ -202,17 +208,12 @@ function recordActualDeparture() {
 }
 
 
-// ----------------------------------------------------------------------
-// START TRIP FUNCTION (Calls location tracking) - MODIFIED
-// ----------------------------------------------------------------------
-
 async function startTrip() {
     const routeId = document.getElementById('routeSelect').value;
     const vehicleId = document.getElementById('vehicleSelect').value;
-    const scheduleSelect = document.getElementById('scheduleSelect');
-    const scheduleSlotId = scheduleSelect.value; 
+    const scheduleSlotId = document.getElementById('scheduleSelect').value; 
     
-    // Check if the departure time has been recorded
+    // Check if the departure time has been recorded (Safety check)
     if (!actualDepartureTimestamp) {
         alert("Please record the Actual Departure Time by clicking the 'Record Departure' button.");
         return;
@@ -230,9 +231,10 @@ async function startTrip() {
         const routeDoc = await db.collection('routes').doc(routeId).get();
         const stop_ids = routeDoc.data().stop_ids || [];
         
-        const [hour, minute] = scheduleTime.split(':'); 
+        // Construct scheduled date object for Firestore Timestamp conversion
+        const [hour, minute] = scheduleTime.split(':').map(Number); 
         const scheduledDate = new Date(); 
-        scheduledDate.setHours(parseInt(hour), parseInt(minute), 0, 0); 
+        scheduledDate.setHours(hour, minute, 0, 0); 
         
         const tripData = {
             route_id: routeId,
@@ -240,12 +242,13 @@ async function startTrip() {
             driver_id: currentDriverId,
             scheduled_slot_id: scheduleSlotId, 
             scheduled_departure_time: firebase.firestore.Timestamp.fromDate(scheduledDate), 
-            actual_departure_time: actualDepartureTimestamp, 
+            actual_departure_time: actualDepartureTimestamp, // Use the recorded timestamp
             from_stop_id: stop_ids[0] || null, 
             to_stop_id: stop_ids[stop_ids.length - 1] || null,
             current_status: 'Ontime',
             last_known_location: null, 
             last_status_reason: null,
+            trip_start_time: firebase.firestore.FieldValue.serverTimestamp(),
         };
 
         const docRef = await db.collection('trips').add(tripData);
@@ -258,18 +261,18 @@ async function startTrip() {
         document.getElementById('currentRoute').textContent = `Route: ${document.getElementById('routeSelect').options[document.getElementById('routeSelect').selectedIndex].text}`;
         updateStatusUI('Ontime');
         
-        // START LOCATION TRACKING (MOCK OR REAL)
+        // START LOCATION TRACKING
         startLocationTracking(null); 
         
-        // Reset the recorded time after a successful trip start
+        // Reset the recorded time state after a successful trip start
         actualDepartureTimestamp = null; 
 
     } catch (error) {
         console.error("Error starting trip:", error);
         alert("Failed to start trip. Check console.");
         document.getElementById('startTripBtn').disabled = false;
-        // Re-enable record button if trip failed
-        document.getElementById('recordDepartureBtn').disabled = false;
+        // Re-enable the record button if the trip creation fails
+        checkStartButtonEligibility();
     }
 }
 
@@ -288,7 +291,7 @@ function startLocationTracking(initialLocation) {
         currentMockLng = initialLocation.longitude;
     }
 
-    const useMock = true; // 🚨 SET THIS TO FALSE TO TRY REAL GPS
+    const useMock = false; // ⭐ THIS IS NOW SET TO FALSE FOR REAL GPS TRACKING ⭐
 
     if (useMock) {
         startMockTracking(); 
@@ -296,7 +299,7 @@ function startLocationTracking(initialLocation) {
         startRealGpsTracking(); 
     } else {
         document.getElementById('trackingStatus').style.color = 'red';
-        document.getElementById('trackingStatus').textContent = 'DISABLED: Geolocation not available.';
+        document.getElementById('trackingStatus').textContent = 'DISABLED: Geolocation not available on this device/browser.';
     }
 }
 
@@ -310,6 +313,7 @@ function startMockTracking() {
     trackingStatus.textContent = 'ACTIVE (MOCK)';
     
     function simulateMovement() {
+        // Your movement logic (simple square loop)
         if (mockMoveDirection === 0) { 
             currentMockLng += mockMoveStep;
             if (currentMockLng > 75.0689) mockMoveDirection = 1; 
@@ -350,10 +354,19 @@ function startRealGpsTracking() {
     };
 
     const errorCallback = (error) => {
-        console.error("Geolocation Error:", error.message);
+        console.error("Geolocation Error:", error.message, error.code);
+        
+        let statusMessage = 'GPS ERROR';
+        if (error.code === 1) statusMessage = 'GPS DENIED (Permissions)';
+        if (error.code === 2) statusMessage = 'GPS UNAVAILABLE (No Signal)';
+        if (error.code === 3) statusMessage = 'GPS TIMEOUT';
+
         trackingStatus.style.color = 'red';
-        trackingStatus.textContent = 'GPS BLOCKED/FAILED';
+        trackingStatus.textContent = `BLOCKED: ${statusMessage}`;
         locationDisplay.textContent = `Error: ${error.message}`;
+        
+        // If GPS fails, you might want to stop tracking or try again.
+        // For now, we keep the UI updated with the error.
     };
 
     locationWatchId = navigator.geolocation.watchPosition(
@@ -361,8 +374,8 @@ function startRealGpsTracking() {
         errorCallback, 
         {
             enableHighAccuracy: true,
-            timeout: 10000, 
-            maximumAge: 0   
+            timeout: 15000, // Wait up to 15 seconds for a position
+            maximumAge: 0   // Do not use cached positions
         }
     );
 }
@@ -384,13 +397,13 @@ function writeLocationToFirestore(lat, lng) {
 // ----------------------------------------------------------------------
 
 function updateStatusUI(status) {
-    const displayStatus = document.getElementById('displayStatus');
-    displayStatus.textContent = status;
+    const displayStatus = document.getElementById('displayStatus');
+    displayStatus.textContent = status;
 
-    let color = '#4caf50';
-    if (status === 'Delayed') color = '#ff9800';
-    if (status === 'Cancelled') color = '#f44336';
-    displayStatus.style.color = color;
+    let color = '#4caf50';
+    if (status === 'Delayed') color = '#ff9800';
+    if (status === 'Cancelled') color = '#f44336';
+    displayStatus.style.color = color;
 }
 
 async function updateStatus(status, reason) {
@@ -429,17 +442,18 @@ async function updateStatus(status, reason) {
 function endTrip() {
     if (confirm("Are you sure you want to END the current trip? This will stop tracking.")) {
         
+        // Stop tracking mechanisms
         if (trackingInterval) clearInterval(trackingInterval); 
         if (locationWatchId) navigator.geolocation.clearWatch(locationWatchId);
         
         trackingInterval = null;
         locationWatchId = null; 
         
-        // Reset the recorded time state
+        // Clear local state
         actualDepartureTimestamp = null; 
-        if (document.getElementById('departureTimeDisplay')) {
-            document.getElementById('departureTimeDisplay').textContent = '';
-        }
+        const departureTimeDisplay = document.getElementById('departureTimeDisplay');
+        if (departureTimeDisplay) departureTimeDisplay.textContent = '';
+
 
         if (activeTripId) {
             db.collection('trips').doc(activeTripId).update({
@@ -451,9 +465,7 @@ function endTrip() {
                 activeTripId = null;
                 document.getElementById('startTripSection').style.display = 'block';
                 document.getElementById('tripStatus').style.display = 'none';
-                document.getElementById('startTripBtn').disabled = false;
-                // Re-enable the record button (but it will be disabled by checkStartButtonEligibility when no selection is made)
-                if (document.getElementById('recordDepartureBtn')) document.getElementById('recordDepartureBtn').disabled = true;
+                checkStartButtonEligibility(); // Resets all buttons based on current selection state
                 alert("Trip successfully ended.");
             })
             .catch(error => {
@@ -464,9 +476,7 @@ function endTrip() {
             activeTripId = null;
             document.getElementById('startTripSection').style.display = 'block';
             document.getElementById('tripStatus').style.display = 'none';
-            document.getElementById('startTripBtn').disabled = false;
-            // Re-enable the record button
-            if (document.getElementById('recordDepartureBtn')) document.getElementById('recordDepartureBtn').disabled = true;
+            checkStartButtonEligibility();
         }
     }
 }

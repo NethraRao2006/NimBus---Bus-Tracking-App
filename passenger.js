@@ -148,7 +148,7 @@ function getLiveLocation() {
         errorCallback, 
         {
             enableHighAccuracy: true,
-            timeout: 10000, 
+            timeout: 30000, // <<--- INCREASED TIMEOUT TO 30 SECONDS
             maximumAge: 0 
         }
     );
@@ -229,8 +229,6 @@ async function loadRoutesForSelection() {
     }
 }
 
-// ... (All code before searchBuses() remains the same)
-
 async function searchBuses() {
     const routeId = document.getElementById('routeSelect').value;
 
@@ -249,9 +247,16 @@ async function searchBuses() {
                 ...doc.data(),
                 current_status: 'Scheduled',
                 live_trip_id: null,
+                // Default N/A vehicle info
+                vehicleName: 'N/A', 
+                licensePlate: 'N/A',
+                bus_type: 'N/A',
+                service_type: 'N/A',
+                // Keep 'actual_departure_time' null by default
+                actual_departure_time: null
             };
             
-            // 🎯 Fetch vehicle details INCLUDING bus_type and service_type
+            // 🎯 Fetch and set default vehicle details if available
             if (schedule.default_vehicle_id) {
                 const vehicleDoc = await db.collection('vehicles').doc(schedule.default_vehicle_id).get();
                 if (vehicleDoc.exists) {
@@ -260,77 +265,88 @@ async function searchBuses() {
                     schedule.licensePlate = vehicleData.license_plate || 'N/A';
                     schedule.bus_type = vehicleData.bus_type || 'N/A';
                     schedule.service_type = vehicleData.service_type || 'N/A';
-                } else {
-                    schedule.vehicleName = 'N/A';
-                    schedule.licensePlate = 'N/A';
-                    schedule.bus_type = 'N/A';
-                    schedule.service_type = 'N/A';
                 }
-            } else {
-                schedule.vehicleName = 'N/A';
-                schedule.licensePlate = 'N/A';
-                schedule.bus_type = 'N/A';
-                schedule.service_type = 'N/A';
             }
             return schedule;
         });
 
         let mergedTrips = await Promise.all(schedulePromises);
 
-        // 2. Fetch live trips (logic for live trips remains the same, fetching vehicle data)
-        const liveTripsSnapshot = await db.collection('trips')
+        // 2. Fetch ALL recent trips (live AND completed/cancelled) for the route
+        // This is the CRITICAL change to ensure we clean up completed trips
+        const allRecentTripsSnapshot = await db.collection('trips')
             .where('route_id', '==', routeId)
-            .where('current_status', 'in', ['Ontime', 'Delayed', 'Cancelled'])
+            .where('current_status', 'in', ['Ontime', 'Delayed', 'Cancelled', 'Completed']) 
             .get();
         
-        const liveTripsPromises = liveTripsSnapshot.docs.map(async doc => {
+        const allRecentTripsPromises = allRecentTripsSnapshot.docs.map(async doc => {
             const trip = doc.data();
             trip.id = doc.id;
             
+            // Fetch and merge vehicle details for all recent trips
             const vehicleDoc = await db.collection('vehicles').doc(trip.vehicle_id).get();
             if (vehicleDoc.exists) {
-                 const vehicleData = vehicleDoc.data();
-                 trip.vehicleName = vehicleData.display_name || 'N/A';
-                 trip.licensePlate = vehicleData.license_plate || 'N/A';
-                 trip.bus_type = vehicleData.bus_type || 'N/A';
-                 trip.service_type = vehicleData.service_type || 'N/A';
+                const vehicleData = vehicleDoc.data();
+                trip.vehicleName = vehicleData.display_name || 'N/A';
+                trip.licensePlate = vehicleData.license_plate || 'N/A';
+                trip.bus_type = vehicleData.bus_type || 'N/A';
+                trip.service_type = vehicleData.service_type || 'N/A';
             } else {
-                 trip.vehicleName = 'N/A';
-                 trip.licensePlate = 'N/A';
-                 trip.bus_type = 'N/A';
-                 trip.service_type = 'N/A';
+                trip.vehicleName = 'N/A';
+                trip.licensePlate = 'N/A';
+                trip.bus_type = 'N/A';
+                trip.service_type = 'N/A';
             }
             
             return trip;
         });
+
+        const allRecentTrips = await Promise.all(allRecentTripsPromises); 
         
-        const liveTrips = await Promise.all(liveTripsPromises);
-        
-        // 3. Merge live data with scheduled data
-        liveTrips.forEach(liveTrip => {
-            const scheduleIndex = mergedTrips.findIndex(s => s.id === liveTrip.scheduled_slot_id);
+        // 3. Merge live and completed data with scheduled data
+        allRecentTrips.forEach(trip => { 
+            const scheduleIndex = mergedTrips.findIndex(s => s.id === trip.scheduled_slot_id);
             
             if (scheduleIndex !== -1) {
-                // Overwrite scheduled status/vehicle info with live info
-                mergedTrips[scheduleIndex].current_status = liveTrip.current_status;
-                mergedTrips[scheduleIndex].last_status_reason = liveTrip.last_status_reason;
-                mergedTrips[scheduleIndex].vehicleName = liveTrip.vehicleName;
-                mergedTrips[scheduleIndex].licensePlate = liveTrip.licensePlate;
-                mergedTrips[scheduleIndex].actual_departure_time = liveTrip.actual_departure_time; 
-                
-                // Overwrite with live trip's vehicle details
-                mergedTrips[scheduleIndex].bus_type = liveTrip.bus_type;
-                mergedTrips[scheduleIndex].service_type = liveTrip.service_type;
+                const scheduleEntry = mergedTrips[scheduleIndex];
 
-                if (liveTrip.current_status === 'Ontime' || liveTrip.current_status === 'Delayed') {
-                    mergedTrips[scheduleIndex].live_trip_id = liveTrip.id; 
-                    mergedTrips[scheduleIndex].last_known_location = liveTrip.last_known_location;
+                if (trip.current_status === 'Ontime' || trip.current_status === 'Delayed') {
+                    // Case A: Bus is LIVE. Overwrite schedule with live data.
+                    scheduleEntry.current_status = trip.current_status;
+                    scheduleEntry.last_status_reason = trip.last_status_reason;
+                    scheduleEntry.vehicleName = trip.vehicleName;
+                    scheduleEntry.licensePlate = trip.licensePlate;
+                    scheduleEntry.actual_departure_time = trip.actual_departure_time; 
+                    scheduleEntry.bus_type = trip.bus_type;
+                    scheduleEntry.service_type = trip.service_type;
+                    scheduleEntry.live_trip_id = trip.id; 
+                    scheduleEntry.last_known_location = trip.last_known_location;
+
+                } else if (trip.current_status === 'Completed' || trip.current_status === 'Cancelled') {
+                    // Case B: Trip is ENDED/CANCELLED. Reset the schedule entry to its defaults.
+                    
+                    scheduleEntry.current_status = trip.current_status; 
+                    
+                    if (scheduleEntry.current_status === 'Completed') {
+                         scheduleEntry.current_status = 'Scheduled'; 
+                    }
+                    
+                    scheduleEntry.last_status_reason = null; 
+
+                    const originalSchedule = mergedTrips[scheduleIndex];
+                    scheduleEntry.vehicleName = originalSchedule.default_vehicle_id ? originalSchedule.vehicleName : 'N/A';
+                    scheduleEntry.licensePlate = originalSchedule.default_vehicle_id ? originalSchedule.licensePlate : 'N/A';
+                    scheduleEntry.bus_type = originalSchedule.default_vehicle_id ? originalSchedule.bus_type : 'N/A';
+                    scheduleEntry.service_type = originalSchedule.default_vehicle_id ? originalSchedule.service_type : 'N/A';
+                    
+                    scheduleEntry.actual_departure_time = null; 
+                    scheduleEntry.live_trip_id = null; 
+                    scheduleEntry.last_known_location = null;
                 }
             }
         });
         
-        // ⭐ NEW SORTING STEP ⭐
-        // Sort the merged array alphabetically by License Plate before rendering
+        // ⭐ SORTING STEP ⭐
         mergedTrips.sort((a, b) => {
             const plateA = a.licensePlate.toUpperCase();
             const plateB = b.licensePlate.toUpperCase();
@@ -340,14 +356,13 @@ async function searchBuses() {
             if (plateA > plateB) {
                 return 1;
             }
-            // If License Plates are the same, use the Scheduled Time as a secondary sort
             const timeA = a.time || 'ZZZZ';
             const timeB = b.time || 'ZZZZ';
             if (timeA < timeB) {
-                 return -1;
+                return -1;
             }
             if (timeA > timeB) {
-                 return 1;
+                return 1;
             }
             return 0;
         });
@@ -399,7 +414,11 @@ function renderScheduleTable(mergedTrips) {
         const busTypeStr = trip.bus_type || 'N/A'; 
         const serviceTypeStr = trip.service_type || 'N/A'; 
         
-        const reason = trip.last_status_reason ? `Reason: ${trip.last_status_reason}` : '';
+        // ONLY display reason if the trip is currently Delayed or Cancelled (not Scheduled or Ontime)
+        const reason = (trip.last_status_reason && (trip.current_status === 'Delayed' || trip.current_status === 'Cancelled')) 
+                       ? `Reason: ${trip.last_status_reason}` 
+                       : ''; 
+
         const statusClass = getStatusClass(trip.current_status);
         
         // Construct the table row
@@ -504,9 +523,11 @@ function showDetails(tripId, vehicleName) {
     
     const { lat: passengerLat, lng: passengerLng } = passengerLocation;
 
+    // Start a new real-time listener for the trip data
     trackingListener = db.collection('trips').doc(tripId).onSnapshot(async doc => {
-        if (!doc.exists || doc.data().current_status === 'Completed') {
-            alert("This trip has ended.");
+        // Check if the trip has ended or is cancelled
+        if (!doc.exists || doc.data().current_status === 'Completed' || doc.data().current_status === 'Cancelled') {
+            alert("This trip has ended or been cancelled.");
             hideDetails();
             return;
         }
@@ -549,12 +570,16 @@ function showDetails(tripId, vehicleName) {
                 const busLatLng = [busLat, busLng];
                 const passengerLatLng = [passengerLat, passengerLng];
                 
+                // --- Marker Update Logic (The Fix is here) ---
+                
                 // Bus Marker (Red)
                 if (busMarker) {
-                    busMarker.setLatLng(busLatLng);
+                    // This line should force the marker to move with new coordinates
+                    busMarker.setLatLng(busLatLng); 
                     // Use panTo to smoothly center map on bus during updates
                     map.panTo(busLatLng, { duration: 0.5 });
                 } else {
+                    // Create the marker if it doesn't exist
                     busMarker = L.circleMarker(busLatLng, {
                         radius: 12,
                         color: 'red',
@@ -566,6 +591,7 @@ function showDetails(tripId, vehicleName) {
                 
                 // Destination Marker (Blue)
                 if (!destinationMarker) {
+                    // Only create the destination marker once
                     destinationMarker = L.circleMarker(passengerLatLng, {
                         radius: 8,
                         color: 'blue',
@@ -574,12 +600,16 @@ function showDetails(tripId, vehicleName) {
                     }).addTo(map);
                     destinationMarker.bindPopup(`Your Location`).openPopup();
                     
-                    // Fit bounds on initial load
+                    // Fit bounds on initial load to show both markers
                     const bounds = L.latLngBounds([busLatLng, passengerLatLng]);
                     map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
                 } else {
+                    // If destination marker exists, update its position (for stop selection or manual input change)
                     destinationMarker.setLatLng(passengerLatLng);
                 }
+                
+                // --- End Marker Update Logic ---
+
             }
 
         } else {

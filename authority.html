@@ -3,175 +3,282 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Authority Portal - Driver/Bus Status</title>
-
+    <title>Authority Portal - Live Monitoring</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
     <style>
-        /* Basic CSS for the Dashboard Layout */
-        body { 
+        /* Authority Portal Specific Styles */
+        body { font-family: Arial, sans-serif; background-color: #f4f7f8; margin: 0; padding: 0;}
+        .container { max-width: 1200px; margin: 20px auto; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; }
+        .dashboard-stats { display: flex; justify-content: space-around; margin-bottom: 30px; }
+        .stat-card { 
+            background-color: #ecf0f1; 
             padding: 20px; 
-            margin: 0; 
-            font-family: Arial, sans-serif;
-            background-color: #f4f7f6;
+            border-radius: 6px; 
+            text-align: center; 
+            flex: 1; 
+            margin: 0 10px;
+            min-width: 200px; 
         }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+        .stat-card h3 { margin-top: 0; color: #7f8c8d; }
+        .stat-card .count { font-size: 2.5em; font-weight: bold; color: #3498db; }
         
-        /* Table Styling */
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-            margin-top: 15px;
-        }
-        .data-table th, .data-table td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: left;
-        }
-        .data-table th {
-            background-color: #007bff;
-            color: white;
-            font-size: 15px;
-        }
-        .data-table tr:nth-child(even) {
-            background-color: #f8f8f8;
-        }
+        /* Table Styles */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px 15px; border: 1px solid #ddd; text-align: left; }
+        th { background-color: #34495e; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f1f1f1; }
+        
+        /* Status Badges */
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85em; }
+        .status-Ontime { background-color: #2ecc71; color: white; }
+        .status-Delayed { background-color: #e74c3c; color: white; }
 
-        /* Bus Status Indicator */
-        .status-dot {
-            height: 10px;
-            width: 10px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 8px;
-        }
-        .status-dot.moving { background-color: #28a745; } /* Green */
-        .status-dot.idle { background-color: #ffc107; } /* Yellow */
-        .status-dot.offline { background-color: #dc3545; } /* Red */
-        .status-dot.active { background-color: #007bff; } /* Blue (Default/Logged In) */
-
-        #last-updated {
-            font-weight: bold;
-            color: #555;
+        .logout-btn { 
+            float: right; 
+            background-color: #e74c3c; 
+            color: white; 
+            border: none; 
+            padding: 10px 15px; 
+            cursor: pointer; 
+            border-radius: 4px;
+            font-size: 1em;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>Authority Portal</h1>
-        <p>Real-Time Status of Logged-In Drivers and Buses. Last Update: <span id="last-updated">...</span></p>
-        <hr>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+        <h1>📊 Authority Portal - Live Trip Overview</h1>
 
-        <h3>Active Bus Status</h3>
-        <table class="data-table">
+        <div class="dashboard-stats">
+            <div class="stat-card">
+                <h3>**Active Trips**</h3>
+                <div class="count" id="activeTripsCount">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>**Delayed Trips**</h3>
+                <div class="count" id="delayedTripsCount">0</div>
+            </div>
+        </div>
+
+        <h2>👨‍✈️ Live Driver Activity</h2>
+        <table id="driverActivityTable">
             <thead>
                 <tr>
-                    <th>Bus Name</th>
+                    <th>**Driver Username**</th> <th>Bus Name</th>
+                    <th>Plate Number</th>
                     <th>Route Name</th>
-                    <th>Driver Name</th>
-                    <th>Driver ID</th>
-                    <th>License Plate</th>
+                    <th>Scheduled Departure Time</th>
+                    <th>Actual Departure Time</th>
                     <th>Status</th>
                 </tr>
             </thead>
-            <tbody id="live-data-body">
-                <tr><td colspan="6">Loading live data...</td></tr>
+            <tbody id="driverActivityBody">
+                <tr><td colspan="7" style="text-align: center;">Loading live data...</td></tr>
             </tbody>
         </table>
-        
-        <p style="font-size: 0.8em; color: #666; margin-top: 20px;">
-            * This portal updates every **5 seconds** by fetching data from your backend API.
-        </p>
+
     </div>
 
     <script>
-        // --- CONFIGURATION (HACKATHON SETUP) ---
-        
-        // **IMPORTANT: REPLACE THIS WITH YOUR ACTUAL API ENDPOINT**
-        const FETCH_DATA_ENDPOINT = 'YOUR_API_ENDPOINT_HERE'; 
-        
-        // Interval for polling data (e.g., fetch new data every 5 seconds)
-        const UPDATE_INTERVAL_MS = 5000; 
+        // *** FIREBASE CONFIGURATION (Use the one from your script.js) ***
+        const firebaseConfig = {
+            apiKey: "AIzaSyAF8Vq1SX1vnb3nJfszWDYYZQ1MbJVwMXQ",
+            authDomain: "nimbus-27588.firebaseapp.com",
+            projectId: "nimbus-27588",
+            storageBucket: "nimbus-27588.firebasestorage.app",
+            messagingSenderId: "582331828095",
+            appId: "1:582331828095:web:62b276f03f25e9ba937c4a",
+            measurementId: "G-73M7E8ZF4N"
+        };
 
-        // Helper to format the status dot
-        function getStatusHtml(status) {
-            let className = 'active'; // Default to active/logged in
-            let displayStatus = status || 'Active';
-
-            // Match the status string returned by your API
-            if (displayStatus.includes('Moving')) {
-                className = 'moving';
-            } else if (displayStatus.includes('Idle')) {
-                className = 'idle';
-            } else if (displayStatus.includes('Offline') || displayStatus.includes('Disconnected')) {
-                className = 'offline';
-            }
-            return `<span class="status-dot ${className}"></span>${displayStatus}`;
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
         }
+        
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
-        // Main function to fetch data and update the table
-        async function updateLiveStatus() {
-            try {
-                // Fetch data from the API endpoint
-                const response = await fetch(FETCH_DATA_ENDPOINT); 
-                
-                // Check if the response is successful (status 200)
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const liveData = await response.json();
-                
-                updateTable(liveData);
-                
-                document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+        // --- HELPER FUNCTIONS ---
 
-            } catch (error) {
-                console.error("Failed to fetch live data:", error);
-                document.getElementById('live-data-body').innerHTML = 
-                    '<tr><td colspan="6" style="color:red; font-weight:bold;">Error: Failed to connect to API endpoint. Check console for details.</td></tr>';
+        function getStatusClass(status) {
+            switch (status) {
+                case 'Ontime': return 'status-Ontime';
+                case 'Delayed': return 'status-Delayed';
+                default: return ''; 
             }
         }
 
-        // Updates the HTML table with the new live data
-        function updateTable(data) {
-            const tableBody = document.getElementById('live-data-body');
-            tableBody.innerHTML = '';
-            
-            if (!Array.isArray(data) || data.length === 0) {
-                 tableBody.innerHTML = '<tr><td colspan="6">No active buses currently logged in.</td></tr>';
-                 return;
-            }
+        function formatTimestampToTime(timestamp) {
+            if (!timestamp || !timestamp.toDate) return 'N/A';
+            const date = timestamp.toDate(); 
+            // Use current user's locale for display
+            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+        }
 
-            data.forEach(bus => {
-                const row = tableBody.insertRow();
-                
-                // Ensure field names match your API (using the structure from the last response)
-                row.insertCell().textContent = bus.busName || 'N/A';
-                row.insertCell().textContent = bus.routeName || 'N/A';
-                row.insertCell().textContent = bus.driverName || 'N/A';
-                row.insertCell().textContent = bus.driverId || 'N/A';
-                row.insertCell().textContent = bus.licensePlate || 'N/A';
-
-                // Status (Cell 6) - Uses helper function for dot color
-                row.insertCell().innerHTML = getStatusHtml(bus.status);
+        // --- LOGOUT FUNCTION ---
+        function logout() {
+            auth.signOut().then(() => {
+                alert("Logged out successfully.");
+                window.location.href = 'index.html'; // Redirect to the main login/selection page
+            }).catch((error) => {
+                console.error("Logout Error:", error);
+                alert("Error logging out.");
             });
         }
         
-        // --- EXECUTION (The Polling Loop) ---
-        
-        // Run once immediately
-        updateLiveStatus(); 
-        
-        // Set the continuous polling loop
-        setInterval(updateLiveStatus, UPDATE_INTERVAL_MS);
+        // --- DATA FETCHING & RENDERING (Real-Time Listener) ---
+
+        async function startLiveMonitoring() {
+            // Check if user is logged in and is an Authority before proceeding
+            auth.onAuthStateChanged(async (user) => {
+                if (!user) {
+                    alert("Access Denied. Please log in as an Authority.");
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                try {
+                    // 1. Get initial data for lookups
+                    const [routesSnapshot, usersSnapshot, vehiclesSnapshot] = await Promise.all([
+                        db.collection('routes').get(),
+                        // *** FIX: Fetch from 'users' collection and filter for Drivers ***
+                        db.collection('users').where('role', '==', 'Driver').get(), 
+                        db.collection('vehicles').get()
+                    ]);
+
+                    // Convert snapshots to lookup maps: { [docId]: docData }
+                    const routes = routesSnapshot.docs.reduce((acc, doc) => { acc[doc.id] = doc.data(); return acc; }, {});
+                    const vehicles = vehiclesSnapshot.docs.reduce((acc, doc) => { 
+                        acc[doc.id] = { 
+                            display_name: doc.data().display_name || 'Bus Missing', 
+                            license_plate: doc.data().license_plate || 'Plate Missing',
+                            ...doc.data()
+                        }; 
+                        return acc; 
+                    }, {});
+                    
+                    // Create the 'drivers' lookup map from the filtered 'users' snapshot
+                    const drivers = usersSnapshot.docs.reduce((acc, doc) => { 
+                        // **SUCCESSFUL LOOKUP:** Uses the 'username' field stored during signup.
+                        acc[doc.id] = { 
+                            username: doc.data().username || doc.data().email || doc.id, 
+                            ...doc.data() 
+                        }; 
+                        return acc; 
+                    }, {});
+
+
+                    // 2. Set up Real-Time Listener on 'trips' collection
+                    db.collection('trips')
+                        // Only monitor trips that are currently running or pending
+                        .where('current_status', 'in', ['Ontime', 'Delayed']) 
+                        .onSnapshot(snapshot => {
+                            const activeTripsData = [];
+                            let delayedCount = 0;
+                            
+                            snapshot.forEach(doc => {
+                                const trip = doc.data();
+                                
+                                // --- Trip Details Lookup ---
+                                const driverId = trip.driver_id;
+                                const vehicleId = trip.vehicle_id;
+                                const routeId = trip.route_id;
+
+                                // Lookup data using the maps
+                                const driverData = drivers[driverId] || { username: 'N/A (Driver Not Found)' }; 
+                                const vehicleData = vehicles[vehicleId] || { display_name: 'N/A', license_plate: 'N/A' };
+                                const routeData = routes[routeId] || { routename: 'N/A' }; 
+
+                                // --- Time Formatting ---
+                                const scheduledTime = formatTimestampToTime(trip.scheduled_departure_time);
+                                const actualTime = formatTimestampToTime(trip.actual_departure_time); 
+
+                                // --- Count Delayed Trips ---
+                                if (trip.current_status === 'Delayed') {
+                                    delayedCount++;
+                                }
+
+                                // --- Create consolidated data object for the table ---
+                                activeTripsData.push({
+                                    driverUsername: driverData.username, // Correctly pulls the username
+                                    busName: vehicleData.display_name,
+                                    plateNumber: vehicleData.license_plate,
+                                    routeName: routeData.routename || 'N/A', 
+                                    scheduledTime: scheduledTime,
+                                    actualTime: actualTime, 
+                                    status: trip.current_status,
+                                });
+                            });
+
+                            // --- Update Dashboard Stats ---
+                            document.getElementById('activeTripsCount').textContent = activeTripsData.length;
+                            document.getElementById('delayedTripsCount').textContent = delayedCount;
+                            
+                            // --- Update Table ---
+                            renderDriverActivityTable(activeTripsData);
+                        }, error => {
+                            console.error("Firestore Listen Error:", error);
+                            // This usually indicates a security rule issue
+                            renderDriverActivityTable([]); 
+                            document.getElementById('driverActivityBody').innerHTML = '<tr><td colspan="7" style="color: red; text-align: center;">Error loading data. Check Security Rules/Console.</td></tr>';
+                        });
+
+                } catch (error) {
+                    console.error("Initial Data Load Error:", error);
+                    alert("Failed to load initial lookup data (routes, users, vehicles). Check Firebase config and security rules.");
+                }
+            });
+        }
+
+
+        function renderDriverActivityTable(trips) {
+            const tableBody = document.getElementById('driverActivityBody');
+            tableBody.innerHTML = '';
+
+            // Sort by status (Delayed first) then by Scheduled Time
+            trips.sort((a, b) => {
+                if (a.status === 'Delayed' && b.status !== 'Delayed') return -1;
+                if (a.status !== 'Delayed' && b.status === 'Delayed') return 1;
+                return a.scheduledTime.localeCompare(b.scheduledTime);
+            });
+
+            if (trips.length === 0) {
+                 tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No active trips found.</td></tr>';
+                 return;
+            }
+
+            trips.forEach(trip => {
+                const statusClass = getStatusClass(trip.status);
+                
+                const row = `
+                    <tr>
+                        <td>**${trip.driverUsername}**</td>
+                        <td>${trip.busName}</td>
+                        <td>${trip.plateNumber}</td>
+                        <td>${trip.routeName}</td>
+                        <td>${trip.scheduledTime}</td>
+                        <td>${trip.actualTime}</td>
+                        <td><span class="status-badge ${statusClass}">${trip.status}</span></td>
+                    </tr>
+                `;
+                tableBody.innerHTML += row;
+            });
+        }
+
+
+        // --- MAIN EXECUTION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            startLiveMonitoring();
+        });
     </script>
+
 </body>
 </html>

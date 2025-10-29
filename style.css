@@ -15,9 +15,21 @@ body {
 }
 
 h1 {
-  font-size: 2.5rem;
-  color: #1e2a78;
-  margin-bottom: 10px;
+  /* Font & Alignment */
+  font-family: 'Montserrat', sans-serif; /* A bold, modern sans-serif */
+  font-size: 4em;
+  font-weight: 900; /* Extra bold */
+  text-align: center;
+  margin: 40px 0;
+
+  /* Gradient Text Effect */
+  background: linear-gradient(45deg, #4CAF50, #2196F3); /* A blue-to-green gradient */
+  -webkit-background-clip: text; /* Clips the gradient to the text shape */
+  background-clip: text;
+  color: transparent; /* Makes the text transparent so the gradient shows through */
+
+  /* Optional 3D/Lift effect */
+  transform: skewX(-5deg); /* Slight italic/skew for dynamic feel */
 }
 
 .subtitle {

@@ -6,7 +6,7 @@ let activeTripId = null; // Stores the auto-generated ID of the current trip
 let trackingInterval = null; // Holds the reference for stopping MOCK location updates
 let locationWatchId = null; // Holds the reference for stopping REAL GPS location updates
 
-// --- NEW VARIABLE TO STORE ACTUAL DEPARTURE TIME ---
+// --- VARIABLE TO STORE ACTUAL DEPARTURE TIME ---
 let actualDepartureTimestamp = null; 
 
 // --- MOCK LOCATION VARIABLES (Used only if useMock is true) ---
@@ -207,6 +207,35 @@ function recordActualDeparture() {
     alert(`Departure time recorded as ${timeString}. You can now start the trip.`);
 }
 
+/**
+ * Helper function to convert "HH:MM AM/PM" to 24-hour time components.
+ */
+function parseTime12hTo24h(time12h) {
+    // Input example: "8:30 AM" or "5:00 PM"
+    const parts = time12h.split(' ');
+    const time = parts[0];
+    const modifier = parts[1] ? parts[1].toUpperCase() : '';
+
+    let [hour, minute] = time.split(':').map(Number);
+
+    if (isNaN(hour) || isNaN(minute)) {
+        throw new Error(`Time parsing failed for input: ${time12h}`);
+    }
+
+    if (modifier === 'PM' && hour !== 12) {
+        hour += 12;
+    } else if (modifier === 'AM' && hour === 12) {
+        hour = 0; // Midnight 12 AM is hour 0
+    }
+    
+    // Handle cases where the time is stored as "8:30" (24-hour format) without AM/PM
+    if (!modifier && hour >= 0 && hour <= 23) {
+        // Assume it's already 24-hour format (e.g., "08:30" or "17:00")
+    }
+
+    // Return parsed 24-hour hour and minute
+    return { hour, minute };
+}
 
 async function startTrip() {
     const routeId = document.getElementById('routeSelect').value;
@@ -227,12 +256,13 @@ async function startTrip() {
              throw new Error("Selected schedule slot or time not found.");
         }
         
-        const scheduleTime = scheduleDoc.data().time; 
+        const scheduleTime = scheduleDoc.data().time; // e.g., "8:30 AM" or "08:30"
         const routeDoc = await db.collection('routes').doc(routeId).get();
         const stop_ids = routeDoc.data().stop_ids || [];
         
-        // Construct scheduled date object for Firestore Timestamp conversion
-        const [hour, minute] = scheduleTime.split(':').map(Number); 
+        // ⭐ FIX INTEGRATION: Parse the time string regardless of 12h or 24h format ⭐
+        const { hour, minute } = parseTime12hTo24h(scheduleTime); 
+        
         const scheduledDate = new Date(); 
         scheduledDate.setHours(hour, minute, 0, 0); 
         
@@ -261,7 +291,7 @@ async function startTrip() {
         document.getElementById('currentRoute').textContent = `Route: ${document.getElementById('routeSelect').options[document.getElementById('routeSelect').selectedIndex].text}`;
         updateStatusUI('Ontime');
         
-        // START LOCATION TRACKING
+        // START LOCATION TRACKING (REAL GPS)
         startLocationTracking(null); 
         
         // Reset the recorded time state after a successful trip start
@@ -269,7 +299,7 @@ async function startTrip() {
 
     } catch (error) {
         console.error("Error starting trip:", error);
-        alert("Failed to start trip. Check console.");
+        alert(`Failed to start trip. Error: ${error.message}`); // Display specific error message
         document.getElementById('startTripBtn').disabled = false;
         // Re-enable the record button if the trip creation fails
         checkStartButtonEligibility();
@@ -277,7 +307,7 @@ async function startTrip() {
 }
 
 // ----------------------------------------------------------------------
-// LOCATION TRACKING LOGIC
+// LOCATION TRACKING LOGIC (No change needed here for map display)
 // ----------------------------------------------------------------------
 
 function startLocationTracking(initialLocation) {
@@ -291,7 +321,7 @@ function startLocationTracking(initialLocation) {
         currentMockLng = initialLocation.longitude;
     }
 
-    const useMock = false; // ⭐ THIS IS NOW SET TO FALSE FOR REAL GPS TRACKING ⭐
+    const useMock = false; // REAL GPS TRACKING
 
     if (useMock) {
         startMockTracking(); 
@@ -364,9 +394,6 @@ function startRealGpsTracking() {
         trackingStatus.style.color = 'red';
         trackingStatus.textContent = `BLOCKED: ${statusMessage}`;
         locationDisplay.textContent = `Error: ${error.message}`;
-        
-        // If GPS fails, you might want to stop tracking or try again.
-        // For now, we keep the UI updated with the error.
     };
 
     locationWatchId = navigator.geolocation.watchPosition(
@@ -383,6 +410,7 @@ function startRealGpsTracking() {
 
 function writeLocationToFirestore(lat, lng) {
     if (activeTripId) {
+        // This is the function that successfully updates the Firestore document!
         db.collection('trips').doc(activeTripId).update({
             last_known_location: new firebase.firestore.GeoPoint(lat, lng),
             last_updated: firebase.firestore.FieldValue.serverTimestamp(),
@@ -432,65 +460,3 @@ async function updateStatus(status, reason) {
             alert("Trip has been CANCELLED and tracking is stopped.");
             endTrip(); 
         }
-
-    } catch (error) {
-        console.error("Error updating trip status:", error);
-        alert("Failed to update status. Check console.");
-    }
-}
-
-function endTrip() {
-    if (confirm("Are you sure you want to END the current trip? This will stop tracking.")) {
-        
-        // Stop tracking mechanisms
-        if (trackingInterval) clearInterval(trackingInterval); 
-        if (locationWatchId) navigator.geolocation.clearWatch(locationWatchId);
-        
-        trackingInterval = null;
-        locationWatchId = null; 
-        
-        // Clear local state
-        actualDepartureTimestamp = null; 
-        const departureTimeDisplay = document.getElementById('departureTimeDisplay');
-        if (departureTimeDisplay) departureTimeDisplay.textContent = '';
-
-
-        if (activeTripId) {
-            db.collection('trips').doc(activeTripId).update({
-                current_status: 'Completed',
-                end_time: firebase.firestore.FieldValue.serverTimestamp(),
-                last_known_location: null, 
-            })
-            .then(() => {
-                activeTripId = null;
-                document.getElementById('startTripSection').style.display = 'block';
-                document.getElementById('tripStatus').style.display = 'none';
-                checkStartButtonEligibility(); // Resets all buttons based on current selection state
-                alert("Trip successfully ended.");
-            })
-            .catch(error => {
-                console.error("Error ending trip:", error);
-                alert("Trip ended locally, but failed to update the database record.");
-            });
-        } else {
-            activeTripId = null;
-            document.getElementById('startTripSection').style.display = 'block';
-            document.getElementById('tripStatus').style.display = 'none';
-            checkStartButtonEligibility();
-        }
-    }
-}
-
-function driverLogout() {
-    if (activeTripId) {
-        const confirmLogout = confirm("A trip is currently active. Please END the trip before logging out. Do you want to end it now?");
-        if (confirmLogout) {
-            endTrip();
-        } else {
-            return; 
-        }
-    }
-    auth.signOut().then(() => {
-        window.location.href = 'index.html';
-    });
-}

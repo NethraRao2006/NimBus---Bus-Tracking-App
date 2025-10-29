@@ -494,4 +494,3 @@ function driverLogout() {
         window.location.href = 'index.html';
     });
 }
-This is the code of driver.js...modify it so that driver's location changes in map also

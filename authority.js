@@ -152,3 +152,23 @@ document.addEventListener('DOMContentLoaded', () => {
     // Assuming Firebase config and db object are initialized
     startLiveMonitoring();
 });
+async function authorityLogout() {
+    
+    // Check if the Firebase Auth object is available
+    if (typeof firebase === 'undefined' || typeof firebase.auth === 'undefined') {
+        console.error("Firebase Auth service is unavailable. Cannot log out.");
+        // Fallback redirect for safety
+        window.location.replace('index.html'); 
+        return;
+    }
+
+    // 2. Perform the sign-out action
+    firebase.auth().signOut().then(() => {
+        console.log("Authority sign-out successful. Redirecting to login.");
+        // Use replace() to prevent back button issues
+        window.location.replace('index.html'); 
+    }).catch((error) => {
+        console.error("Authority Logout Error:", error);
+        alert(Authority Logout failed: ${error.message});
+    });
+}

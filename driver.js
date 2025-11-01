@@ -481,16 +481,35 @@ function endTrip() {
     }
 }
 
-function driverLogout() {
+async function driverLogout() {
+    const activeTripId = localStorage.getItem('activeTripId'); 
+    
+    // Step 1: Securely complete the active trip
     if (activeTripId) {
-        const confirmLogout = confirm("A trip is currently active. Please END the trip before logging out. Do you want to end it now?");
-        if (confirmLogout) {
-            endTrip();
-        } else {
-            return; 
+        try {
+            await db.collection('trips').doc(activeTripId).update({
+                status: 'Completed',
+                end_time: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            console.log("Trip successfully marked as 'Completed'.");
+        } catch (error) {
+            console.error("FIREBASE ERROR: Failed to complete active trip:", error);
         }
     }
-    auth.signOut().then(() => {
-        window.location.href = 'index.html';
-    });
+
+    // Step 2: Clear Local Data (Confirmed working)
+    localStorage.removeItem('activeTripId'); 
+    console.log("Local trip data cleared.");
+    
+    // Step 3: Perform Firebase Logout and Redirect
+    // If the firebase-auth.js script isn't loaded, this fails silently.
+    firebase.auth().signOut()
+        .then(() => {
+            console.log("SUCCESS: Firebase sign out completed. Redirecting...");
+            window.location.href = 'index.html'; 
+        })
+        .catch((error) => {
+            console.error("CRITICAL AUTH ERROR: Firebase Sign Out Failed:", error);
+            alert("Logout failed! Check HTML script loading.");
+        });
 }

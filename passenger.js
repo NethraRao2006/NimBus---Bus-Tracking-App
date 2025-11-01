@@ -40,6 +40,25 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
         Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * (1 - Math.cos(dLon)) / 2;
     return R * 2 * Math.asin(Math.sqrt(a)); 
 }
+// For the calculation of ETA
+function estimateETA(distanceKm) {
+    if (distanceKm < 0.1) return "Arriving Now"; // Within 100 meters
+    if (distanceKm > 50) return "> 2 hours"; // Trip is too far for reliable ETA
+
+    // Time in hours = Distance (km) / Speed (km/h)
+    const timeInHours = distanceKm / AVERAGE_BUS_SPEED_KMPH;
+    
+    // Time in minutes
+    const timeInMinutes = Math.round(timeInHours * 60);
+
+    if (timeInMinutes < 1) return "Less than 1 min";
+    if (timeInMinutes > 60) {
+        const hours = Math.floor(timeInMinutes / 60);
+        const minutes = timeInMinutes % 60;
+        return `${hours} hr ${minutes} min`;
+    }
+    return `${timeInMinutes} min`;
+}
 
 function notifyPassenger(message) {
     const lastAlert = localStorage.getItem('last_alert_message');

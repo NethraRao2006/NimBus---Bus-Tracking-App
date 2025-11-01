@@ -41,7 +41,7 @@ It connects **passengers**, **drivers**, and **transport authorities** through a
 
 ---
 
-### 🧑‍✈️ Driver Portal
+### 🧍‍♂️ Driver Portal
 - Driver logs in using **Firebase Authentication**.  
 - Selects **route**, **vehicle**, and **scheduled time** from dropdown lists.  
 - On clicking **“Record Actual Departure Time”**, the current time is auto-filled.  

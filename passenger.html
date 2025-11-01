@@ -178,32 +178,37 @@
         </div>
 
         <div id="resultsSection" style="display: none; margin-top: 30px;">
-            
-            <h3>All Scheduled Trips for Route: <span id="scheduleRouteName"></span></h3>
-           <table id="scheduledTripsTable">
-                <thead>
-                    <tr>
-                        <th>Departure Time</th> 
-                        <th>Actual Departure</th>
-                        <th>Days Active</th> 
-                        <th>Bus Type</th> 
-                        <th>Service Type</th>
-                        <th>Vehicle / Licence</th> 
-                        <th>Status / Reason</th>
-                    </tr>
-                </thead>
-                <tbody id="scheduledTripsBody">
-                    </tbody>
-            </table>
-            <p id="noScheduleMsg" style="color: gray; margin-top: 15px; display: none;">No scheduled trips found for this route.</p>
+    
+    <h2>Schedule for <span id="scheduleRouteName">Selected Route</span></h2>
+    <hr>
+    
+    <h3 style="margin-top: 15px;">Currently Active Buses: <span id="busCount">0</span></h3> 
+    <p style="font-size: 0.9em; color: #555;">(Click a card to begin real-time tracking and get arrival notifications)</p>
 
-            <h3 style="margin-top: 30px;">Currently Active Buses: <span id="busCount">0</span></h3>
-            <p style="font-size: 0.9em; color: #555;">(Click a card to begin real-time tracking and get arrival notifications)</p>
-            
-            <div id="busList">
-                </div>
-            <p id="noActiveMsg" style="color: gray; margin-top: 15px; display: none;">No buses currently active on this route.</p>
+    <div id="busList">
         </div>
+    <p id="noActiveMsg" style="color: gray; margin-top: 15px; display: none;">No buses currently running on this route.</p>
+    <hr>
+    
+    <h3 style="margin-top: 30px;">All Scheduled Trips</h3>
+    <table id="scheduledTripsTable" class="schedule-table">
+        <thead>
+            <tr>
+                <th>Departure Time</th>
+                <th>Actual Departure</th>
+                <th>Days Active</th>
+                <th>Bus Type</th>
+                <th>Service Type</th>
+                <th>Vehicle / Licence</th>
+                <th>Status / Reason</th>
+            </tr>
+        </thead>
+        <tbody id="scheduledTripsBody">
+            </tbody>
+    </table>
+    <p id="noScheduleMsg" style="color: gray; margin-top: 15px; display: none;">No schedules found for this route.</p>
+    <button onclick="showSearchSection()">Back to Search</button>
+</div>
         <div id="detailSection" style="display: none;">
             <h3>Live Tracking Details</h3>
             <div class="detail-info">

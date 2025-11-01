@@ -1,45 +1,44 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: 'Poppins', sans-serif;
-}
-
-body {
-  background: linear-gradient(to bottom right, #dff3ff, #ffffff);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-}
-
 h1 {
-  /* Font & Alignment */
-  font-family: 'Montserrat', sans-serif; /* A bold, modern sans-serif */
-  font-size: 4em;
-  font-weight: 900; /* Extra bold */
-  text-align: center;
-  margin: 40px 0;
+    /* Font & Alignment */
+    font-family: 'Montserrat', sans-serif; /* A bold, modern sans-serif */
+    font-size: 4em;
+    font-weight: 900; /* Extra bold */
+    text-align: center;
+    margin: 40px 0;
 
-  /* Gradient Text Effect */
-  background: linear-gradient(45deg, #4CAF50, #2196F3); /* A blue-to-green gradient */
-  -webkit-background-clip: text; /* Clips the gradient to the text shape */
-  background-clip: text;
-  color: transparent; /* Makes the text transparent so the gradient shows through */
+    /* New: Gradient Text Effect - Deep, modern colors */
+    background: linear-gradient(90deg, #1e3c72, #2a5298, #00bfff); /* Deep blue to bright sky blue */
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent; /* Makes the text transparent so the gradient shows through */
 
-  /* Optional 3D/Lift effect */
-  transform: skewX(-5deg); /* Slight italic/skew for dynamic feel */
+    /* New: Subtle Glow/Shadow Effect */
+    text-shadow: 
+        0 0 5px rgba(0, 191, 255, 0.4), /* Soft inner light blue glow */
+        0 0 10px rgba(0, 191, 255, 0.2); /* Wider, softer glow */
+
+    /* New: Dynamic Transform (removed the slight skew for a cleaner look) */
+    transform: scale(1.05); /* Slight initial scaling for emphasis */
+    transition: all 0.5s ease-in-out; /* Add a smooth transition */
+}
+
+/* Optional: Add a slight hover effect to make it interactive */
+h1:hover {
+    transform: scale(1.08); /* Scales up slightly more */
+    text-shadow: 
+        0 0 10px rgba(0, 191, 255, 0.6),
+        0 0 20px rgba(0, 191, 255, 0.4); /* Brighter glow on hover */
 }
 
 .subtitle {
-  font-size: 1rem;
-  color: #333;
-  text-align: center;
-  max-width: 600px;
-  margin-bottom: 40px;
+    font-size: 1rem;
+    color: #333;
+    text-align: center; /* This centers the text inside the element */
+    max-width: 600px;
+    /* >>> THIS IS THE NEW/CHANGED LINE <<< */
+    margin: 0 auto 40px auto; 
+    /* 0 (top margin), auto (left margin), 40px (bottom margin), auto (right margin) */
 }
-
 .card-container {
   display: flex;
   flex-wrap: wrap;
@@ -201,4 +200,3 @@ footer {
   /* ... (Keep existing input styles) ... */
   transition: border-color 0.3s;
 }
-

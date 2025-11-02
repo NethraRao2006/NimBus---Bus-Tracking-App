@@ -9,7 +9,7 @@ let trackingListener = null;
 let mapInitialized = false; 
 let tempPassengerMarker = null;
 let passengerWatchId = null; 
-
+const AVERAGE_BUS_SPEED_KMPH = 25;
 // --- HELPER FUNCTIONS ---
 
 // Function to format Firestore Timestamp to HH:MM AM/PM string
@@ -521,6 +521,8 @@ function renderResults(mergedTrips, routeId) {
 
 // --- TRACKING FUNCTIONS ---
 
+// --- TRACKING FUNCTIONS ---
+
 function showDetails(tripId, vehicleName) {
     
     // Check and set passenger location before proceeding
@@ -551,13 +553,19 @@ function showDetails(tripId, vehicleName) {
             return;
         }
         
+        // --- CRITICAL FIX: UI elements MUST be retrieved inside the listener ---
+        const statusBadge = document.getElementById('detailStatus');
+        const locationSpan = document.getElementById('detailLocation'); 
+        const detailETA = document.getElementById('detailETA'); // Retrieve the ETA element
+        // ----------------------------------------------------------------------
+
         const trip = doc.data();
         const vehicleDoc = await db.collection('vehicles').doc(trip.vehicle_id).get();
         const currentVehicleName = vehicleDoc.exists ? vehicleDoc.data().display_name : vehicleName;
 
         document.getElementById('detailVehicle').textContent = `${currentVehicleName} (Trip ID: ${doc.id.substring(0, 6)}...)`;
         
-        const statusBadge = document.getElementById('detailStatus');
+        // Update Status Badge
         statusBadge.textContent = trip.current_status;
         statusBadge.className = `status-badge ${getStatusClass(trip.current_status)}`;
         
@@ -565,7 +573,6 @@ function showDetails(tripId, vehicleName) {
              statusBadge.textContent += ` (Reason: ${trip.last_status_reason})`;
         }
         
-        const locationSpan = document.getElementById('detailLocation');
         let busLat = null;
         let busLng = null;
 
@@ -576,11 +583,18 @@ function showDetails(tripId, vehicleName) {
 
             const distanceToLocation = calculateDistance(busLat, busLng, passengerLat, passengerLng);
             
+            // --- ETA INTEGRATION (Commit Point 1) ---
+            const eta = estimateETA(distanceToLocation);
+            detailETA.textContent = eta; 
+            // ------------------------------------------
+            
             const THRESHOLD_DISTANCE_KM = 2; 
             const REACHED_DISTANCE_KM = 0.05; 
 
+            // Notification Logic (Commit Point 2: Enhanced notification text)
             if (distanceToLocation <= THRESHOLD_DISTANCE_KM && distanceToLocation > REACHED_DISTANCE_KM) {
-                notifyPassenger(`🚌 Bus ${currentVehicleName} is approaching your stop/location! It is ${distanceToLocation.toFixed(2)} km away.`);
+                // Notifying the user about the ETA
+                notifyPassenger(`🚌 Bus ${currentVehicleName} is approaching your stop/location! It is ${distanceToLocation.toFixed(2)} km away. ETA: ${eta}.`);
             } else if (distanceToLocation <= REACHED_DISTANCE_KM) {
                 notifyPassenger(`🚨 Bus ${currentVehicleName} has arrived near your stop/location!`);
             }
@@ -589,16 +603,11 @@ function showDetails(tripId, vehicleName) {
                 const busLatLng = [busLat, busLng];
                 const passengerLatLng = [passengerLat, passengerLng];
                 
-                // --- Marker Update Logic (The Fix is here) ---
-                
                 // Bus Marker (Red)
                 if (busMarker) {
-                    // This line should force the marker to move with new coordinates
                     busMarker.setLatLng(busLatLng); 
-                    // Use panTo to smoothly center map on bus during updates
                     map.panTo(busLatLng, { duration: 0.5 });
                 } else {
-                    // Create the marker if it doesn't exist
                     busMarker = L.circleMarker(busLatLng, {
                         radius: 12,
                         color: 'red',
@@ -610,7 +619,6 @@ function showDetails(tripId, vehicleName) {
                 
                 // Destination Marker (Blue)
                 if (!destinationMarker) {
-                    // Only create the destination marker once
                     destinationMarker = L.circleMarker(passengerLatLng, {
                         radius: 8,
                         color: 'blue',
@@ -619,20 +627,16 @@ function showDetails(tripId, vehicleName) {
                     }).addTo(map);
                     destinationMarker.bindPopup(`Your Location`).openPopup();
                     
-                    // Fit bounds on initial load to show both markers
                     const bounds = L.latLngBounds([busLatLng, passengerLatLng]);
                     map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
                 } else {
-                    // If destination marker exists, update its position (for stop selection or manual input change)
                     destinationMarker.setLatLng(passengerLatLng);
                 }
-                
-                // --- End Marker Update Logic ---
-
             }
 
         } else {
             locationSpan.textContent = 'Location not yet available.';
+            detailETA.textContent = 'N/A'; // Clear ETA if location is missing
         }
     });
 }

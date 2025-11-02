@@ -1,62 +1,101 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+}
+
+body {
+  /* MODIFIED: Changed from a gradient to a solid light gray color */
+  background: #f4f4f9; 
+  
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
 h1 {
-    /* Font & Alignment */
-    font-family: 'Montserrat', sans-serif; /* A bold, modern sans-serif */
-    font-size: 4em;
-    font-weight: 900; /* Extra bold */
-    text-align: center;
-    margin: 40px 0;
+  /* Font & Alignment */
+  font-family: 'Montserrat', sans-serif;
+  font-size: 4em;
+  font-weight: 900;
+  text-align: center;
+  margin: 40px 0;
 
-    /* New: Gradient Text Effect - Deep, modern colors */
-    background: linear-gradient(90deg, #1e3c72, #2a5298, #00bfff); /* Deep blue to bright sky blue */
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent; /* Makes the text transparent so the gradient shows through */
+  /* Animated Gradient Text Effect - MODIFIED FOR BLUE */
+  background: linear-gradient(
+    45deg,
+    #1e2a78,
+    #2196f3,
+    #1e2a78,
+    #00bcd4
+  ); /* New Blue/Indigo Colors */
+  background-size: 400% 400%; /* Makes the gradient huge for the shift effect */
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 
-    /* New: Subtle Glow/Shadow Effect */
-    text-shadow: 
-        0 0 5px rgba(0, 191, 255, 0.4), /* Soft inner light blue glow */
-        0 0 10px rgba(0, 191, 255, 0.2); /* Wider, softer glow */
+  /* Optional 3D/Lift effect */
+  transform: skewX(-5deg);
 
-    /* New: Dynamic Transform (removed the slight skew for a cleaner look) */
-    transform: scale(1.05); /* Slight initial scaling for emphasis */
-    transition: all 0.5s ease-in-out; /* Add a smooth transition */
+  /* NEW: Add the animation property */
+  animation: gradient-shift 6s ease infinite;
+
+  /* NEW: Add a smooth transition for the hover effect */
+  transition: transform 0.3s ease-in-out; 
 }
 
-/* Optional: Add a slight hover effect to make it interactive */
+/* NEW: Add the hover effect to make it "pop" */
 h1:hover {
-    transform: scale(1.08); /* Scales up slightly more */
-    text-shadow: 
-        0 0 10px rgba(0, 191, 255, 0.6),
-        0 0 20px rgba(0, 191, 255, 0.4); /* Brighter glow on hover */
+  /* Pop effect: Scale it up slightly and remove the skew */
+  transform: scale(1.05) skewX(0deg); 
 }
 
-.subtitle {
-    font-size: 1rem;
-    color: #333;
-    text-align: center; /* This centers the text inside the element */
-    max-width: 600px;
-    /* >>> THIS IS THE NEW/CHANGED LINE <<< */
-    margin: 0 auto 40px auto; 
-    /* 0 (top margin), auto (left margin), 40px (bottom margin), auto (right margin) */
+/* ... (Keep the @keyframes gradient-shift as is) ... */
+
+/* NEW: Define the animation keyframes */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
+.subtitle {
+  font-size: 1rem;
+  color: #333;
+  text-align: center;
+  max-width: 600px;
+  margin-bottom: 40px;
+}
+
 .card-container {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 30px;
 }
-
 .card {
-  background: #fff;
+  /* MODIFIED: Changed to a slightly darker, more visible light gray */
+  background: #e5e5e5; 
+  color: #000;       
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+
+  /* Keep existing styles below */
   width: 250px;
   padding: 30px 20px;
   border-radius: 20px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   text-align: center;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
-
 .card:hover {
+  /* MODIFIED: Slightly darker gray on hover for depth */
+  background: #d4d4d4; 
   transform: translateY(-8px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
@@ -71,15 +110,16 @@ h1:hover {
 .authority .icon { color: #9c27b0; }
 
 .card h3 {
-  color: #333;
+  color: #000; 
   margin-bottom: 10px;
 }
 
 .card p {
-  color: #666;
+  color: #333; 
   font-size: 0.9rem;
   margin-bottom: 20px;
 }
+
 
 .btn {
   display: inline-block;
@@ -115,14 +155,15 @@ footer {
   justify-content: center;
   align-items: center;
 }
-
 .popup-content {
-  background: #fff;
+  /* MODIFIED POPUP BACKGROUND */
+  background: #ffffff; 
+  
   padding: 30px;
   border-radius: 15px;
   width: 300px;
   text-align: center;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   position: relative;
 }
 

@@ -5,6 +5,11 @@ let currentDriverId = null;
 let activeTripId = null; // Stores the auto-generated ID of the current trip
 let trackingInterval = null; // Holds the reference for stopping MOCK location updates
 let locationWatchId = null; // Holds the reference for stopping REAL GPS location updates
+// --- NEW: destination auto-end globals ---
+let destinationCoords = null;  // { lat, lng } of final stop
+let destinationReached = false; // ensures auto-end runs only once
+// ------------------------------------------------
+
 
 // --- NEW VARIABLE TO STORE ACTUAL DEPARTURE TIME ---
 let actualDepartureTimestamp = null; 
@@ -230,7 +235,32 @@ async function startTrip() {
         const scheduleTime = scheduleDoc.data().time; 
         const routeDoc = await db.collection('routes').doc(routeId).get();
         const stop_ids = routeDoc.data().stop_ids || [];
-        
+// --- NEW: Load destination stop coordinates for auto-end ---
+destinationCoords = null;
+destinationReached = false;
+
+if (stop_ids.length > 0) {
+    const destinationStopId = stop_ids[stop_ids.length - 1];
+    try {
+        const destStopDoc = await db.collection('stops').doc(destinationStopId).get();
+        if (destStopDoc.exists) {
+            const stopData = destStopDoc.data();
+            // Expect stop documents to have 'latitude' and 'longitude' numeric fields
+            if (stopData.latitude != null && stopData.longitude != null) {
+                destinationCoords = { lat: Number(stopData.latitude), lng: Number(stopData.longitude) };
+                console.log("Destination coords loaded for auto-end:", destinationCoords);
+            } else {
+                console.warn("Destination stop exists but lacks latitude/longitude fields.");
+            }
+        } else {
+            console.warn("Destination stop doc not found for id:", destinationStopId);
+        }
+    } catch (err) {
+        console.error("Failed to fetch destination stop for auto-end:", err);
+    }
+}
+// ------------------------------------------------------------
+
         // Construct scheduled date object for Firestore Timestamp conversion
         const [hour, minute] = scheduleTime.split(':').map(Number); 
         const scheduledDate = new Date(); 
@@ -348,6 +378,9 @@ function startRealGpsTracking() {
         const { latitude, longitude } = position.coords;
         writeLocationToFirestore(latitude, longitude);
         
+        // Check if bus reached the destination (auto-end logic)
+        checkIfDestinationReached(latitude, longitude);
+
         trackingStatus.style.color = 'green';
         trackingStatus.textContent = 'ACTIVE (REAL GPS)';
         locationDisplay.textContent = `REAL: Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`;
@@ -375,10 +408,11 @@ function startRealGpsTracking() {
         {
             enableHighAccuracy: true,
             timeout: 15000, // Wait up to 15 seconds for a position
-            maximumAge: 0   // Do not use cached positions
+            maximumAge: 0   // Do not use cached positions
         }
     );
 }
+
 
 
 function writeLocationToFirestore(lat, lng) {
@@ -438,6 +472,68 @@ async function updateStatus(status, reason) {
         alert("Failed to update status. Check console.");
     }
 }
+
+// ----------------------------------------------------------------------
+// AUTO END TRIP FEATURE - Checks if driver reached destination
+// ----------------------------------------------------------------------
+function checkIfDestinationReached(currentLat, currentLng) {
+    // Guard conditions
+    if (!destinationCoords || destinationReached || !activeTripId) return;
+
+    // Haversine formula to compute distance (meters)
+    const R = 6371e3; // meters
+    const φ1 = currentLat * Math.PI / 180;
+    const φ2 = destinationCoords.lat * Math.PI / 180;
+    const Δφ = (destinationCoords.lat - currentLat) * Math.PI / 180;
+    const Δλ = (destinationCoords.lng - currentLng) * Math.PI / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // meters
+
+    console.log(`Distance to destination: ${distance.toFixed(1)} m`);
+
+    // Threshold in meters to auto-end (tweak as needed)
+    const AUTO_END_THRESHOLD_METERS = 100;
+
+    if (distance <= AUTO_END_THRESHOLD_METERS) {
+        destinationReached = true; // prevent re-entry
+        alert("✅ Trip completed automatically — destination reached!");
+
+        // Stop local tracking immediately
+        if (trackingInterval) { clearInterval(trackingInterval); trackingInterval = null; }
+        if (locationWatchId) { navigator.geolocation.clearWatch(locationWatchId); locationWatchId = null; }
+
+        // Update Firestore to mark trip as completed
+        db.collection('trips').doc(activeTripId).update({
+            current_status: 'Completed',
+            end_time: firebase.firestore.FieldValue.serverTimestamp(),
+            last_known_location: new firebase.firestore.GeoPoint(currentLat, currentLng)
+        })
+        .then(() => {
+            console.log("Trip auto-ended successfully in Firestore.");
+            // Clear local state and update UI
+            activeTripId = null;
+            document.getElementById('startTripSection').style.display = 'block';
+            document.getElementById('tripStatus').style.display = 'none';
+            // reset departure display & state
+            actualDepartureTimestamp = null;
+            const departureTimeDisplay = document.getElementById('departureTimeDisplay');
+            if (departureTimeDisplay) departureTimeDisplay.textContent = '';
+            checkStartButtonEligibility();
+        })
+        .catch((error) => {
+            console.error("Error updating trip to Completed during auto-end:", error);
+            // Still clear local tracking to avoid continued location writes
+            activeTripId = null;
+            document.getElementById('startTripSection').style.display = 'block';
+            document.getElementById('tripStatus').style.display = 'none';
+        });
+    }
+}
+// ----------------------------------------------------------------------
 
 function endTrip() {
     if (confirm("Are you sure you want to END the current trip? This will stop tracking.")) {

@@ -7,7 +7,7 @@
 
 body {
   /* MODIFIED: Changed from a gradient to a solid light gray color */
-  background: #f4f4f9; 
+  background: #dadadf; 
   
   display: flex;
   flex-direction: column;
@@ -29,7 +29,7 @@ h1 {
     #1e2a78,
     #2196f3,
     #1e2a78,
-    #00bcd4
+    #1500d4
   ); /* New Blue/Indigo Colors */
   background-size: 400% 400%; /* Makes the gradient huge for the shift effect */
   -webkit-background-clip: text;
@@ -129,14 +129,14 @@ h1:hover {
   color: white;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.3s;
+  transition: background 0.5s;
 }
 
 .btn-passenger { background: #00bcd4; }
 .btn-driver { background: #4caf50; }
 .btn-authority { background: #9c27b0; }
 
-.btn:hover { filter: brightness(1.1); }
+.btn:hover { filter: brightness(1.); }
 
 footer {
   margin-top: 40px;

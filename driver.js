@@ -377,6 +377,7 @@ function startRealGpsTracking() {
     const successCallback = (position) => {
         const { latitude, longitude } = position.coords;
         writeLocationToFirestore(latitude, longitude);
+        fetchWeather(latitude, longitude);
         
         // Check if bus reached the destination (auto-end logic)
         checkIfDestinationReached(latitude, longitude);
@@ -607,5 +608,33 @@ async function driverLogout() {
         .catch((error) => {
             console.error("CRITICAL AUTH ERROR: Firebase Sign Out Failed:", error);
             alert("Logout failed! Check HTML script loading.");
+        });
+}
+
+// ----------------------------------------------------------------------
+// SIMPLE WEATHER FEATURE - Uses Open-Meteo API (No key needed)
+// ----------------------------------------------------------------------
+function fetchWeather(lat, lng) {
+    const weatherDisplay = document.getElementById('weatherDisplay');
+    if (!weatherDisplay) return;
+
+    // Free and no-key API (Open-Meteo)
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
+
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.current_weather) {
+                const temp = data.current_weather.temperature;
+                const wind = data.current_weather.windspeed;
+                const cond = data.current_weather.weathercode;
+                weatherDisplay.textContent = `Weather: ${temp}°C, Wind ${wind} km/h`;
+            } else {
+                weatherDisplay.textContent = `Weather: Not available`;
+            }
+        })
+        .catch(err => {
+            console.error("Weather fetch error:", err);
+            weatherDisplay.textContent = `Weather: Error`;
         });
 }

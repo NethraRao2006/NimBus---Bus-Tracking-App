@@ -618,7 +618,6 @@ function fetchWeather(lat, lng) {
     const weatherDisplay = document.getElementById('weatherDisplay');
     if (!weatherDisplay) return;
 
-    // Free and no-key API (Open-Meteo)
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
 
     fetch(url)
@@ -627,14 +626,32 @@ function fetchWeather(lat, lng) {
             if (data && data.current_weather) {
                 const temp = data.current_weather.temperature;
                 const wind = data.current_weather.windspeed;
-                const cond = data.current_weather.weathercode;
-                weatherDisplay.textContent = `Weather: ${temp}°C, Wind ${wind} km/h`;
+                const code = data.current_weather.weathercode;
+
+                // Base weather text
+                let weatherText = `Weather: ${temp}°C, Wind ${wind} km/h`;
+
+                // 🌧️ Weather code meaning (based on Open-Meteo docs)
+                // 51–67 → Drizzle/Rain, 80–99 → Showers/Thunderstorms
+                const rainyCodes = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99];
+
+                if (rainyCodes.includes(code)) {
+                    weatherText += " ⚠️ Heavy rain — network connectivity may be poor.";
+                    weatherDisplay.style.color = "#d32f2f"; // Red warning color
+                    weatherDisplay.style.fontWeight = "bold";
+                } else {
+                    weatherDisplay.style.color = "#2e7d32"; // Normal green for clear weather
+                    weatherDisplay.style.fontWeight = "normal";
+                }
+
+                weatherDisplay.textContent = weatherText;
             } else {
-                weatherDisplay.textContent = `Weather: Not available`;
+                weatherDisplay.textContent = "Weather: Not available";
             }
         })
         .catch(err => {
             console.error("Weather fetch error:", err);
-            weatherDisplay.textContent = `Weather: Error`;
+            weatherDisplay.textContent = "Weather: Error fetching data";
         });
 }
+

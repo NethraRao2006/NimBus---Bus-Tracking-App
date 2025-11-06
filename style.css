@@ -7,7 +7,7 @@
 
 body {
   /* MODIFIED: Changed from a gradient to a solid light gray color */
-  background: #dadadf; 
+  background: #bec5cc; /* Changed from #dadadf */
   
   display: flex;
   flex-direction: column;
@@ -15,6 +15,7 @@ body {
   justify-content: center;
   min-height: 100vh;
 }
+
 h1 {
     /* Font & Alignment */
     font-family: 'Montserrat', sans-serif;

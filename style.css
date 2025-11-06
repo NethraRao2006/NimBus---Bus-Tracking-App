@@ -7,7 +7,7 @@
 
 body {
   /* MODIFIED: Changed from a gradient to a solid light gray color */
-  background: #dadadf; 
+  background: #bec5cc; /* Changed from #dadadf */
   
   display: flex;
   flex-direction: column;
@@ -15,56 +15,51 @@ body {
   justify-content: center;
   min-height: 100vh;
 }
+
 h1 {
-  /* Font & Alignment */
-  font-family: 'Montserrat', sans-serif; /* Your current font family */
-  font-size: 4em;
-  font-weight: 900; /* This is already very bold */
-  /* ... rest of the styles */
+    /* Font & Alignment */
+    font-family: 'Montserrat', sans-serif;
+    font-size: 4em;
+    font-weight: 900;
 
+    /* ✨ ENHANCEMENT: NEW Gradient Colors for "NimBus" */
+    background: linear-gradient(
+        45deg,
+        #4CAF50,   /* Vibrant Green (like your driver button) */
+        #2196F3,   /* Bright Sky Blue (classic NimBus feel) */
+        #2727c2,
+        #7f6096    /* Aqua/Teal (like your passenger button) */
+    );
+    background-size: 400% 400%; /* Makes the gradient huge for the shift effect */
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
 
-  /* Animated Gradient Text Effect - MODIFIED FOR BLUE */
-  background: linear-gradient(
-    45deg,
-    #1e2a78,
-    #2196f3,
-    #1e2a78,
-    #1500d4
-  ); /* New Blue/Indigo Colors */
-  background-size: 400% 400%; /* Makes the gradient huge for the shift effect */
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+    /* Optional 3D/Lift effect */
+    transform: skewX(-3deg); 
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1); 
 
-  /* Optional 3D/Lift effect */
-  transform: skewX(-5deg);
+    /* NEW: Add the animation property */
+    animation: gradient-shift 6s ease infinite;
 
-  /* NEW: Add the animation property */
-  animation: gradient-shift 6s ease infinite;
-
-  /* NEW: Add a smooth transition for the hover effect */
-  transition: transform 0.3s ease-in-out; 
+    /* NEW: Add a smooth transition for the hover effect */
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
 }
 
-/* NEW: Add the hover effect to make it "pop" */
+/* Keep the h1:hover and @keyframes gradient-shift as they are. */
 h1:hover {
-  /* Pop effect: Scale it up slightly and remove the skew */
-  transform: scale(1.05) skewX(0deg); 
+    transform: scale(1.03) skewX(0deg); 
 }
 
-/* ... (Keep the @keyframes gradient-shift as is) ... */
-
-/* NEW: Define the animation keyframes */
 @keyframes gradient-shift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+/* Example of how to use it inside the button */
+.btn.loading {
+  background: #ccc !important;
+  pointer-events: none; /* Disable clicking while loading */
 }
 .subtitle {
   font-family: 'Poppins', sans-serif; /* Already defined in the global selector */
@@ -83,6 +78,7 @@ h1:hover {
   justify-content: center;
   gap: 30px;
 }
+
 .card {
   /* MODIFIED: Changed to a slightly darker, more visible light gray */
   background: #e5e5e5; 
@@ -122,29 +118,40 @@ h1:hover {
   font-size: 0.9rem;
   margin-bottom: 20px;
 }
-
-
 .btn {
-  display: inline-block;
-  padding: 10px 20px;
-  border-radius: 25px;
-  border: none;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.5s;
+    display: inline-block;
+    padding: 12px 25px; 
+    border-radius: 30px; 
+    border: none;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    /* ✨ ENHANCEMENT: Transition all properties for smoothness */
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+    
+    /* NEW BASE SHADOW: Subtle lift from the background */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); 
 }
 
+/* BUTTON COLORS: (No change, keeping your rich palette) */
 .btn-passenger { background: #00bcd4; }
 .btn-driver { background: #4caf50; }
 .btn-authority { background: #9c27b0; }
 
-.btn:hover { filter: brightness(1.); }
-
+/* --- BUTTON HOVER: The "Apetizing" Interaction --- */
+.btn:hover { 
+    /* NEW: Slightly move up and increase the shadow depth */
+    transform: translateY(-3px); 
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3); 
+}
 footer {
   margin-top: 40px;
+  padding-top: 20px;
   color: #777;
   font-size: 0.85rem;
+  text-align: center;
+  /* Add a subtle line above it */
+  border-top: 1px solid #ddd; 
 }
 
 /* Popup form */

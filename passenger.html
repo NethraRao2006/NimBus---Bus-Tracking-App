@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -137,7 +138,98 @@
             background-color: #e3f2fd;
             border-radius: 8px;
         }
-       
+       /* REPLACE your existing @media screen and (max-width: 600px) block with this */
+
+@media screen and (max-width: 600px) {
+    /* Ensure the container fully uses mobile width with some padding */
+    .container {
+        padding: 15px; /* Slightly less padding on very small screens */
+    }
+
+    /* Hide table header on small screens */
+    #scheduledTripsTable thead {
+        display: none;
+    }
+
+    /* Force table to act like a list */
+    #scheduledTripsTable table, 
+    #scheduledTripsTable tbody, 
+    #scheduledTripsTable th, 
+    #scheduledTripsTable td, 
+    #scheduledTripsTable tr {
+        display: block;
+        width: 100%; /* Make sure these elements take full width */
+        font-size: 14px;
+    }
+    
+    /* Style the row as a card */
+    #scheduledTripsTable tr {
+        margin-bottom: 10px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        border-left: 5px solid #007bff; /* Highlight */
+        /* Ensure rows expand to fill their container */
+        box-sizing: border-box; /* Include padding and border in the element's total width and height */
+    }
+
+    /* Style the table cells */
+    #scheduledTripsTable td {
+        border: none; /* Remove cell borders */
+        border-bottom: 1px dotted #e0e0e0;
+        position: relative;
+        padding-left: 45%; /* Adjusted: Give more space for the value on the right */
+        padding-right: 10px; /* Add some right padding */
+        text-align: right;
+        min-height: 40px; /* Ensure space for content */
+        box-sizing: border-box; /* Crucial for width calculations */
+    }
+    
+    /* Last cell in the row */
+    #scheduledTripsTable tr td:last-child {
+        border-bottom: 0;
+    }
+
+    /* Use data-label attribute to display the column header as a label */
+    #scheduledTripsTable td:before {
+        content: attr(data-label);
+        position: absolute;
+        left: 10px;
+        width: 40%; /* Adjusted: Give less width to the label, more to the value */
+        padding-right: 5px; /* Spacing between label and value */
+        white-space: normal; /* Allow label text to wrap */
+        text-align: left;
+        font-weight: 600;
+        color: #555;
+        box-sizing: border-box; /* Crucial for width calculations */
+    }
+    
+    /* Make the active bus cards stack better on mobile */
+    .result-card {
+        padding: 12px;
+        margin: 8px 0;
+        box-sizing: border-box; /* Ensure it takes full width correctly */
+        width: 100%;
+    }
+
+    /* Adjust status badge size for smaller screens */
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 3px 6px;
+    }
+
+    /* Adjust map container height for mobile */
+    #mapContainer {
+        height: 250px; /* Make the map a bit smaller on mobile */
+    }
+
+    /* Adjust button width for mobile */
+    button {
+        width: 100%;
+        margin-left: 0;
+        margin-right: 0;
+    }
+}
     </style>
 </head>
 <body>
@@ -177,7 +269,7 @@
             <button id="searchBtn" onclick="searchBuses()">Search Buses</button>
         </div>
 
-        <div id="resultsSection" style="display: none; margin-top: 30px;">
+       <div id="resultsSection" style="display: none; margin-top: 30px;">
     
     <h2>Schedule for <span id="scheduleRouteName">Selected Route</span></h2>
     <hr>
@@ -210,7 +302,7 @@
     <button onclick="showSearchSection()">Back to Search</button>
 </div>
         <div id="detailSection" style="display: none;">
-              <!-- for calculating ETA -->
+            <!-- for calculating ETA -->
             <strong>Estimated Arrival:</strong>
             <span id="detailETA">Calculating...</span>   
             <span id="detailLocation"></span>

@@ -15,35 +15,38 @@ body {
   justify-content: center;
   min-height: 100vh;
 }
-
 h1 {
     /* Font & Alignment */
     font-family: 'Montserrat', sans-serif;
     font-size: 4em;
     font-weight: 900;
 
-    /* ✨ ENHANCEMENT: NEW Gradient Colors for "NimBus" */
+    /* EXISTING Gradient Colors for "NimBus" */
     background: linear-gradient(
         45deg,
-        #4CAF50,   /* Vibrant Green (like your driver button) */
-        #2196F3,   /* Bright Sky Blue (classic NimBus feel) */
+        #38a13c, 
+        #2196F3, 
         #2727c2,
-        #7f6096    /* Aqua/Teal (like your passenger button) */
+        #7f6096 
     );
-    background-size: 400% 400%; /* Makes the gradient huge for the shift effect */
+    background-size: 400% 400%;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
 
     /* Optional 3D/Lift effect */
     transform: skewX(-3deg); 
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1); 
+    /* MODIFIED: Increased shadow for better separation */
+    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2); 
 
-    /* NEW: Add the animation property */
+    /* NEW GLOW EFFECT (Subtle outer shadow) */
+    filter: drop-shadow(0 0 5px rgba(33, 150, 243, 0.5)); /* Blue glow */
+
+    /* EXISTING: Add the animation property */
     animation: gradient-shift 6s ease infinite;
 
     /* NEW: Add a smooth transition for the hover effect */
-    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
 }
 
 /* Keep the h1:hover and @keyframes gradient-shift as they are. */

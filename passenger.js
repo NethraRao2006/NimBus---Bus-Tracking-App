@@ -651,7 +651,7 @@ function showDetails(tripId, vehicleName) {
                     map.panTo(busLatLng, { duration: 0.5 });
                 } else {
                     busMarker = L.circleMarker(busLatLng, {
-                        radius: 6,
+                        radius: 8,
                         color: 'red',
                         
                         fillColor: 'pink',
@@ -663,7 +663,7 @@ function showDetails(tripId, vehicleName) {
                 // Destination Marker (Blue)
                 if (!destinationMarker) {
                     destinationMarker = L.circleMarker(passengerLatLng, {
-                        radius: 6,
+                        radius: 8,
                         color: 'blue',
                         fillColor: '#00bcd4',
                         fillOpacity: 0.8

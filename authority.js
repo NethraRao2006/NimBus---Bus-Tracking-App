@@ -176,22 +176,37 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeDataAndMonitoring();
 });
 
-
 // --- LOGOUT FUNCTION ---
 async function authorityLogout() {
-    // Check if the Firebase Auth object is available
-    if (typeof firebase === 'undefined' || typeof firebase.auth === 'undefined') {
-        console.error("Firebase Auth service is unavailable. Cannot log out.");
+    // 1. Check for Firebase App and Auth Service availability
+    // Check if the firebase variable and the auth method exist.
+    // Assuming 'firebase' is the globally available object from the SDK.
+    if (typeof firebase === 'undefined' || typeof firebase.auth !== 'function') {
+        console.error("🚨 Firebase Auth service is unavailable. Cannot log out.");
+        // Redirect regardless, as we can't perform an actual logout, 
+        // but want to prevent access to protected content.
         window.location.replace('index.html'); 
         return;
     }
 
-    // Perform the sign-out action
-    firebase.auth().signOut().then(() => {
-        console.log("Authority sign-out successful. Redirecting to login.");
+    try {
+        // 2. Perform the sign-out action
+        // firebase.auth() returns the Auth instance
+        await firebase.auth().signOut(); 
+
+        // 3. Handle success
+        console.log("✅ Authority sign-out successful. Redirecting to login.");
+        // Use location.assign or location.replace for redirection
         window.location.replace('index.html'); 
-    }).catch((error) => {
-        console.error("Authority Logout Error:", error);
-        alert(Authority Logout failed: ${error.message});
-    });
+
+    } catch (error) {
+        // 4. Handle errors
+        console.error("❌ Authority Logout Error:", error);
+        // Display a user-friendly error message using a template literal
+        alert(`Authority Logout failed: ${error.message}`);
+        // Consider if you should still redirect on error, 
+        // or if the user should try again. 
+        // For a critical error, often a redirect is safest.
+        window.location.replace('index.html'); 
+    }
 }

@@ -1,3 +1,4 @@
+
 * {
   margin: 0;
   padding: 0;
@@ -6,98 +7,174 @@
 }
 
 body {
-  /* MODIFIED: Changed from a gradient to a solid light gray color */
-  background: #bec5cc; /* Changed from #dadadf */
-  
+  background: linear-gradient(to bottom right, #dff3ff, #ffffff);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
 }
+/* Must be placed outside any selector like h1 */
+@property --color-start {
+    syntax: '<color>';
+    initial-value: #16A085;
+    inherits: false;
+}
+
+@property --color-end {
+    syntax: '<color>';
+    initial-value: #27AE60;
+    inherits: false;
+}
+@keyframes gradientShift {
+    0% {
+        --color-start: #16A085;
+        --color-end: #27AE60;
+    }
+    33% {
+        --color-start: #795e85; /* Blue */
+        --color-end:  #9a81a5;
+    }
+    66% {
+        --color-start:#486580;
+        --color-end: #5c7d9b;
+    }
+    100% {
+        --color-start: #16A085; 
+        --color-end: #27AE60;
+    }
+}
+/* Ensure your fadeInUp keyframes are still present */
+@keyframes fadeInUp {
+    0% {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
 h1 {
-    /* Font & Alignment */
-    font-family: 'Montserrat', sans-serif;
-    font-size: 4em;
+    /* Stylish Typography */
+    font-family: 'Poppins', sans-serif;
+    font-size: 4.5em;
     font-weight: 900;
-
-    /* EXISTING Gradient Colors for "NimBus" */
-    background: linear-gradient(
-        45deg,
-        #38a13c, 
-        #2196F3, 
-        #2727c2,
-        #7f6096 
-    );
-    background-size: 400% 400%;
+    
+    /* FIX: Use custom properties in the background definition */
+    background: linear-gradient(90deg, var(--color-start) 0%, var(--color-end) 100%);
+    
+    /* ESSENTIAL CLIPPING (Kept separate from the keyframes) */
     -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    -webkit-text-fill-color: transparent;
+    
+    /* Layout & Polish (Retained) */
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin: 0.7em 0 0.3em 0; 
+    
+    /* Animation Application (Combined) */
+    animation: 
+        fadeInUp 0.8s ease-out 0.2s forwards,
+        gradientShift 3s ease-in-out 1s infinite alternate; 
 
-    /* Optional 3D/Lift effect */
-    transform: skewX(-3deg); 
-    /* MODIFIED: Increased shadow for better separation */
-    text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.2); 
-
-    /* NEW GLOW EFFECT (Subtle outer shadow) */
-    filter: drop-shadow(0 0 5px rgba(33, 150, 243, 0.5)); /* Blue glow */
-
-    /* EXISTING: Add the animation property */
-    animation: gradient-shift 6s ease infinite;
-
-    /* NEW: Add a smooth transition for the hover effect */
-    transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+    /* Initial State */
+    opacity: 0;
 }
+/* .bus_icon{
+  height:90px;
+  width:auto;
+} */
 
-/* Keep the h1:hover and @keyframes gradient-shift as they are. */
-h1:hover {
-    transform: scale(1.03) skewX(0deg); 
-}
-
-@keyframes gradient-shift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-/* Example of how to use it inside the button */
-.btn.loading {
-  background: #ccc !important;
-  pointer-events: none; /* Disable clicking while loading */
-}
 .subtitle {
-  font-family: 'Poppins', sans-serif; /* Already defined in the global selector */
   font-size: 1rem;
   color: #333;
   text-align: center;
   max-width: 600px;
   margin-bottom: 40px;
-  /* NEW BOLDING */
-  font-weight: 700; 
 }
 
+/* --- Global Container Enhancements --- */
 .card-container {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 30px;
+  gap: 50px; /* More space between cards */
+  padding: 60px 20px;
+  /* Optional: Set a nice light page background to make cards pop */
+  
 }
 
 .card {
-  /* MODIFIED: Changed to a slightly darker, more visible light gray */
-  background: #e5e5e5; 
-  color: #000;       
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-
-  /* Keep existing styles below */
-  width: 250px;
-  padding: 30px 20px;
-  border-radius: 20px;
+  position: relative; /* Needed for the pseudo-element/accent bar */
+  background: #ffffff; 
+  width: 300px; /* Slightly wider and more substantial */
+  padding: 40px 30px; 
+  border-radius: 12px; 
+  color: #1a1a1a;
   text-align: center;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
+  /* Deeper, layered shadow */
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.1), 0 5px 15px rgba(0, 0, 0, 0.05); 
+  
+  /* Add subtle inner shadow for depth (optional, but beautiful) */
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05) inset; 
+  
+  /* Complex transition for multiple effects */
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), 
+              box-shadow 0.4s ease-in-out; 
+  
+  /* Activate 3D space for the tilt effect */
+  transform-style: preserve-3d;
 }
+
+/* --- Accent Bar (The "Color Pop") --- */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 5px; /* Height of the accent line */
+  background: linear-gradient(90deg, #4a90e2, #50c9c3); /* Gradient color */
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  transform: scaleX(0); /* Start hidden */
+  transform-origin: left;
+  transition: transform 0.4s ease-out;
+}
+
+/* --- Interactive Hover Effects --- */
 .card:hover {
-  /* MODIFIED: Slightly darker gray on hover for depth */
-  background: #d4d4d4; 
+  /* Dynamic 3D tilt */
+  transform: translateZ(5px) rotateX(1deg) rotateY(1deg);
+  /* Significantly lifted shadow for dramatic effect */
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25), 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Show the accent bar on hover */
+.card:hover::before {
+  transform: scaleX(1); /* Fully revealed */
+}
+
+/* --- Typography (Assumes you have content like a Title/Header) --- */
+.card h3 {
+  font-family: 'Montserrat', sans-serif; /* A bold, clean choice */
+  font-size: 24px;
+  font-weight: 700;
+  color: #4a90e2; /* Matches one of the accent gradient colors */
+  margin-bottom: 15px;
+  letter-spacing: -0.5px;
+}
+
+.card p {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  color: #666;
+}
+
+.card:hover {
   transform: translateY(-8px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
@@ -112,49 +189,37 @@ h1:hover {
 .authority .icon { color: #9c27b0; }
 
 .card h3 {
-  color: #000; 
+  color: #333;
   margin-bottom: 10px;
 }
 
 .card p {
-  color: #333; 
+  color: #666;
   font-size: 0.9rem;
   margin-bottom: 20px;
 }
+
 .btn {
-    display: inline-block;
-    padding: 12px 25px; 
-    border-radius: 30px; 
-    border: none;
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-    /* ✨ ENHANCEMENT: Transition all properties for smoothness */
-    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
-    
-    /* NEW BASE SHADOW: Subtle lift from the background */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15); 
+  display: inline-block;
+  padding: 10px 20px;
+  border-radius: 25px;
+  border: none;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
 }
 
-/* BUTTON COLORS: (No change, keeping your rich palette) */
 .btn-passenger { background: #00bcd4; }
 .btn-driver { background: #4caf50; }
 .btn-authority { background: #9c27b0; }
 
-/* --- BUTTON HOVER: The "Apetizing" Interaction --- */
-.btn:hover { 
-    /* NEW: Slightly move up and increase the shadow depth */
-    transform: translateY(-3px); 
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3); 
-}
+.btn:hover { filter: brightness(1.1); }
+
 footer {
   margin-top: 40px;
-  padding-top: 20px;
   color: #777;
   font-size: 0.85rem;
-  text-align: center;
-  /* Add a subtle line above it */
-  border-top: 1px solid #ddd; 
 }
 
 /* Popup form */
@@ -168,15 +233,14 @@ footer {
   justify-content: center;
   align-items: center;
 }
+
 .popup-content {
-  /* MODIFIED POPUP BACKGROUND */
-  background: #ffffff; 
-  
+  background: #fff;
   padding: 30px;
   border-radius: 15px;
   width: 300px;
   text-align: center;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
   position: relative;
 }
 

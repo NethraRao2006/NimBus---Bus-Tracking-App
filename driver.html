@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -103,12 +104,10 @@
             <p id="currentRoute">Route: N/A</p>
             <p>Live Tracking: <span id="trackingStatus">STOPPED</span></p>
                 <p id="currentLocationDisplay">Location: N/A</p> 
-                <p id="weatherDisplay">Weather: Loading...</p>
-
 
             <hr style="margin: 15px 0;">
             
-            <h4>Current Status: <span id="displayStatus" style="font-weight: bold;">Ontime</span></h4>
+            <h4>Current Status: <span id="displayStatus" style="font-weight: bold;">Sceduled</span></h4>
             
             <div class="status-btn-group" style="display: flex; gap: 10px; margin: 10px 0;">
                 <button onclick="updateStatus('Ontime', '')" class="btn" style="background: #4caf50; flex: 1; color: white;">On-time</button>
@@ -134,5 +133,6 @@
 
     <script src="script.js"></script> 
     <script src="driver.js"></script> 
+    <script src="authority.js"></script>
 </body>
 </html>

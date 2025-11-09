@@ -544,7 +544,6 @@ function renderResults(mergedTrips, routeId) {
 
 
 // --- TRACKING FUNCTIONS ---
-
 function showDetails(tripId, vehicleName) {
     
     // Check and set passenger location before proceeding
@@ -563,10 +562,6 @@ function showDetails(tripId, vehicleName) {
     if(trackingListener) {
         trackingListener(); 
     }
-    
-    // Clear ALL specific trip alerts when starting a new trip listener
-    // This is important if a user quickly switches between buses.
-    // NOTE: We don't need to clear the old global 'last_alert_message' key anymore.
 
     const { lat: passengerLat, lng: passengerLng } = passengerLocation;
 
@@ -605,12 +600,15 @@ function showDetails(tripId, vehicleName) {
         if (trip.last_known_location) {
             busLat = trip.last_known_location.latitude;
             busLng = trip.last_known_location.longitude;
-            locationSpan.textContent = `${busLat.toFixed(6)}, ${busLng.toFixed(6)}`;
+            
+            // ✅ FIX: Show Driver's/Bus's Lat/Lng for 'Last Known Location'
+            locationSpan.textContent = `${busLat.toFixed(6)}, ${busLng.toFixed(6)}`; 
 
             const distanceToLocation = calculateDistance(busLat, busLng, passengerLat, passengerLng);
             
             // --- ETA INTEGRATION ---
             const eta = estimateETA(distanceToLocation);
+            // ✅ FIX: Show ONLY the ETA time/status for 'Estimated ETA'
             detailETA.textContent = eta; 
             // -----------------------
             
@@ -651,9 +649,8 @@ function showDetails(tripId, vehicleName) {
                     map.panTo(busLatLng, { duration: 0.5 });
                 } else {
                     busMarker = L.circleMarker(busLatLng, {
-                        radius: 8,
+                        radius: 6,
                         color: 'red',
-                        
                         fillColor: 'pink',
                         fillOpacity: 0.8
                     }).addTo(map);
@@ -663,7 +660,7 @@ function showDetails(tripId, vehicleName) {
                 // Destination Marker (Blue)
                 if (!destinationMarker) {
                     destinationMarker = L.circleMarker(passengerLatLng, {
-                        radius: 8,
+                        radius: 6,
                         color: 'blue',
                         fillColor: '#00bcd4',
                         fillOpacity: 0.8

@@ -11,10 +11,13 @@
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 <script src="passenger.js"></script>
+<link rel="icon" type="image/png" href="bus png.png">
 </head>
 <body>
 
-    <h1>NimBus</h1>
+    <h1>Nimbus</h1>
+    
+    
     <p class="subtitle">
        Real-Time Bus Tracking System <br><br>Track your bus in real-time, get instant notifications, and never miss your ride.
     </p>
@@ -54,12 +57,29 @@
                 <button id="signupModeBtn" class="toggle-btn" onclick="setMode('signup')">Signup</button>
             </div>
 
-            <form id="userForm" onsubmit="return handleAuth(event)">
-                <input type="text" id="username" placeholder="Enter username (Optional)">
-                <input type="email" id="email" placeholder="Enter email" required>
-                <input type="password" id="password" placeholder="Enter password" required>
-                <button type="submit" class="submit-btn" id="submitButton">Login</button>
-            </form>
+         <form id="userForm" onsubmit="return handleAuth(event)">
+    
+    <label for="email"></label>
+    <input type="email" id="email" name="email" placeholder="Enter email" required>
+
+    <label for="password"></label>
+    <input type="password" id="password" name="password" placeholder="Enter password" required>
+
+    <div id="licenseField" style="display:none;">
+        <label for="license"></label>
+        <input type="text" id="license" name="license" placeholder="Enter your license number">
+    </div>
+
+    <div id="usernameField">
+        <label for="username"></label>
+        <input type="text" id="username" name="username" placeholder="Enter username ">
+    </div>
+    
+    <p id="errorMsg" style="color: red; margin-top: 10px;"></p>
+
+    <button type="submit" class="submit-btn" id="submitButton">Login</button>
+    
+</form>
             <p id="errorMsg"></p>
         </div>
     </div>
@@ -67,3 +87,7 @@
     <script src="script.js"></script>
 </body>
 </html>
+
+
+
+

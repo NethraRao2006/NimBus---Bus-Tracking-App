@@ -5,11 +5,6 @@ let currentDriverId = null;
 let activeTripId = null; // Stores the auto-generated ID of the current trip
 let trackingInterval = null; // Holds the reference for stopping MOCK location updates
 let locationWatchId = null; // Holds the reference for stopping REAL GPS location updates
-// --- NEW: destination auto-end globals ---
-let destinationCoords = null;  // { lat, lng } of final stop
-let destinationReached = false; // ensures auto-end runs only once
-// ------------------------------------------------
-
 
 // --- NEW VARIABLE TO STORE ACTUAL DEPARTURE TIME ---
 let actualDepartureTimestamp = null; 
@@ -26,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     auth.onAuthStateChanged(user => {
         if (user && user.uid) {
             currentDriverId = user.uid;
+            // NOTE: Displaying email until you implement fetching username from Firestore/Auth profile
             document.getElementById('driverWelcome').textContent = `Welcome, ${user.email}!`;
             loadInitialData();
         } else {
@@ -44,6 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const startBtn = document.getElementById('startTripBtn');
     if (startBtn) {
         startBtn.addEventListener('click', startTrip);
+    }
+    
+    // 🟢 ADDED: Event listener for the Logout button
+    const logoutBtn = document.querySelector('.logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', driverLogout);
     }
 });
 
@@ -229,38 +231,13 @@ async function startTrip() {
     try {
         const scheduleDoc = await db.collection('schedules').doc(scheduleSlotId).get();
         if (!scheduleDoc.exists || !scheduleDoc.data().time) {
-             throw new Error("Selected schedule slot or time not found.");
+            throw new Error("Selected schedule slot or time not found.");
         }
         
         const scheduleTime = scheduleDoc.data().time; 
         const routeDoc = await db.collection('routes').doc(routeId).get();
         const stop_ids = routeDoc.data().stop_ids || [];
-// --- NEW: Load destination stop coordinates for auto-end ---
-destinationCoords = null;
-destinationReached = false;
-
-if (stop_ids.length > 0) {
-    const destinationStopId = stop_ids[stop_ids.length - 1];
-    try {
-        const destStopDoc = await db.collection('stops').doc(destinationStopId).get();
-        if (destStopDoc.exists) {
-            const stopData = destStopDoc.data();
-            // Expect stop documents to have 'latitude' and 'longitude' numeric fields
-            if (stopData.latitude != null && stopData.longitude != null) {
-                destinationCoords = { lat: Number(stopData.latitude), lng: Number(stopData.longitude) };
-                console.log("Destination coords loaded for auto-end:", destinationCoords);
-            } else {
-                console.warn("Destination stop exists but lacks latitude/longitude fields.");
-            }
-        } else {
-            console.warn("Destination stop doc not found for id:", destinationStopId);
-        }
-    } catch (err) {
-        console.error("Failed to fetch destination stop for auto-end:", err);
-    }
-}
-// ------------------------------------------------------------
-
+        
         // Construct scheduled date object for Firestore Timestamp conversion
         const [hour, minute] = scheduleTime.split(':').map(Number); 
         const scheduledDate = new Date(); 
@@ -275,7 +252,7 @@ if (stop_ids.length > 0) {
             actual_departure_time: actualDepartureTimestamp, // Use the recorded timestamp
             from_stop_id: stop_ids[0] || null, 
             to_stop_id: stop_ids[stop_ids.length - 1] || null,
-            current_status: 'Ontime',
+            current_status: 'Scheduled',
             last_known_location: null, 
             last_status_reason: null,
             trip_start_time: firebase.firestore.FieldValue.serverTimestamp(),
@@ -289,8 +266,20 @@ if (stop_ids.length > 0) {
         document.getElementById('currentTripId').textContent = `Trip ID: ${activeTripId}`;
         document.getElementById('currentVehicle').textContent = `Vehicle: ${document.getElementById('vehicleSelect').options[document.getElementById('vehicleSelect').selectedIndex].text}`;
         document.getElementById('currentRoute').textContent = `Route: ${document.getElementById('routeSelect').options[document.getElementById('routeSelect').selectedIndex].text}`;
-        updateStatusUI('Ontime');
         
+        
+        // Determine initial status based on actual departure vs. scheduled departure
+        const scheduledMs = scheduledDate.getTime();
+        const actualMs = actualDepartureTimestamp.toDate().getTime();
+        
+        let initialStatus = 'Scheduled';
+        const delayThresholdMs = 60000; // 1 minute threshold
+        
+        // Update DB status and UI
+        await db.collection('trips').doc(activeTripId).update({ current_status: initialStatus });
+        updateStatusUI(initialStatus);
+
+
         // START LOCATION TRACKING
         startLocationTracking(null); 
         
@@ -321,7 +310,7 @@ function startLocationTracking(initialLocation) {
         currentMockLng = initialLocation.longitude;
     }
 
-    const useMock = false; // ⭐ THIS IS NOW SET TO FALSE FOR REAL GPS TRACKING ⭐
+    const useMock = false; // ⭐ REAL GPS TRACKING IS ENABLED ⭐
 
     if (useMock) {
         startMockTracking(); 
@@ -377,11 +366,7 @@ function startRealGpsTracking() {
     const successCallback = (position) => {
         const { latitude, longitude } = position.coords;
         writeLocationToFirestore(latitude, longitude);
-        fetchWeather(latitude, longitude);
         
-        // Check if bus reached the destination (auto-end logic)
-        checkIfDestinationReached(latitude, longitude);
-
         trackingStatus.style.color = 'green';
         trackingStatus.textContent = 'ACTIVE (REAL GPS)';
         locationDisplay.textContent = `REAL: Lat: ${latitude.toFixed(6)}, Lng: ${longitude.toFixed(6)}`;
@@ -398,9 +383,6 @@ function startRealGpsTracking() {
         trackingStatus.style.color = 'red';
         trackingStatus.textContent = `BLOCKED: ${statusMessage}`;
         locationDisplay.textContent = `Error: ${error.message}`;
-        
-        // If GPS fails, you might want to stop tracking or try again.
-        // For now, we keep the UI updated with the error.
     };
 
     locationWatchId = navigator.geolocation.watchPosition(
@@ -413,7 +395,6 @@ function startRealGpsTracking() {
         }
     );
 }
-
 
 
 function writeLocationToFirestore(lat, lng) {
@@ -474,184 +455,77 @@ async function updateStatus(status, reason) {
     }
 }
 
-// ----------------------------------------------------------------------
-// AUTO END TRIP FEATURE - Checks if driver reached destination
-// ----------------------------------------------------------------------
-function checkIfDestinationReached(currentLat, currentLng) {
-    // Guard conditions
-    if (!destinationCoords || destinationReached || !activeTripId) return;
-
-    // Haversine formula to compute distance (meters)
-    const R = 6371e3; // meters
-    const φ1 = currentLat * Math.PI / 180;
-    const φ2 = destinationCoords.lat * Math.PI / 180;
-    const Δφ = (destinationCoords.lat - currentLat) * Math.PI / 180;
-    const Δλ = (destinationCoords.lng - currentLng) * Math.PI / 180;
-
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c; // meters
-
-    console.log(`Distance to destination: ${distance.toFixed(1)} m`);
-
-    // Threshold in meters to auto-end (tweak as needed)
-    const AUTO_END_THRESHOLD_METERS = 100;
-
-    if (distance <= AUTO_END_THRESHOLD_METERS) {
-        destinationReached = true; // prevent re-entry
-        alert("✅ Trip completed automatically — destination reached!");
-
-        // Stop local tracking immediately
-        if (trackingInterval) { clearInterval(trackingInterval); trackingInterval = null; }
-        if (locationWatchId) { navigator.geolocation.clearWatch(locationWatchId); locationWatchId = null; }
-
-        // Update Firestore to mark trip as completed
-        db.collection('trips').doc(activeTripId).update({
-            current_status: 'Completed',
-            end_time: firebase.firestore.FieldValue.serverTimestamp(),
-            last_known_location: new firebase.firestore.GeoPoint(currentLat, currentLng)
-        })
-        .then(() => {
-            console.log("Trip auto-ended successfully in Firestore.");
-            // Clear local state and update UI
-            activeTripId = null;
-            document.getElementById('startTripSection').style.display = 'block';
-            document.getElementById('tripStatus').style.display = 'none';
-            // reset departure display & state
-            actualDepartureTimestamp = null;
-            const departureTimeDisplay = document.getElementById('departureTimeDisplay');
-            if (departureTimeDisplay) departureTimeDisplay.textContent = '';
-            checkStartButtonEligibility();
-        })
-        .catch((error) => {
-            console.error("Error updating trip to Completed during auto-end:", error);
-            // Still clear local tracking to avoid continued location writes
-            activeTripId = null;
-            document.getElementById('startTripSection').style.display = 'block';
-            document.getElementById('tripStatus').style.display = 'none';
-        });
-    }
-}
-// ----------------------------------------------------------------------
-
-function endTrip() {
+async function endTrip() {
+    // NOTE: 'activeTripId' must be defined as a GLOBAL variable outside this function.
     if (confirm("Are you sure you want to END the current trip? This will stop tracking.")) {
         
-        // Stop tracking mechanisms
+        // --- 1. Stop tracking mechanisms first ---
         if (trackingInterval) clearInterval(trackingInterval); 
         if (locationWatchId) navigator.geolocation.clearWatch(locationWatchId);
         
-        trackingInterval = null;
-        locationWatchId = null; 
-        
-        // Clear local state
-        actualDepartureTimestamp = null; 
-        const departureTimeDisplay = document.getElementById('departureTimeDisplay');
-        if (departureTimeDisplay) departureTimeDisplay.textContent = '';
+        // --- 2. CRITICAL: Check if a trip is active BEFORE clearing the ID ---
+        if (activeTripId) { 
+            
+            const tripIdToUpdate = activeTripId; // Store it before potential reset
+            
+            try {
+                // --- 3. Update Firestore (Sets status to 'Completed') ---
+                await db.collection('trips').doc(tripIdToUpdate).update({
+                    current_status: 'Completed', // This is what the passenger portal listens for
+                    end_time: firebase.firestore.FieldValue.serverTimestamp(),
+                    last_known_location: null, // Clear location data
+                });
 
-
-        if (activeTripId) {
-            db.collection('trips').doc(activeTripId).update({
-                current_status: 'Completed',
-                end_time: firebase.firestore.FieldValue.serverTimestamp(),
-                last_known_location: null, 
-            })
-            .then(() => {
-                activeTripId = null;
+                // --- 4. SUCCESS: Only now clear the global state and reset UI ---
+                activeTripId = null; // Clear ID now
+                actualDepartureTimestamp = null;
+                
                 document.getElementById('startTripSection').style.display = 'block';
                 document.getElementById('tripStatus').style.display = 'none';
-                checkStartButtonEligibility(); // Resets all buttons based on current selection state
-                alert("Trip successfully ended.");
-            })
-            .catch(error => {
+                document.getElementById('departureTimeDisplay').textContent = '';
+                document.getElementById('recordDepartureBtn').disabled = false;
+                
+                checkStartButtonEligibility(); 
+                alert("Trip successfully ended and database updated.");
+
+            } catch (error) {
                 console.error("Error ending trip:", error);
-                alert("Trip ended locally, but failed to update the database record.");
-            });
+                alert("Trip ended locally, but failed to update the database record. Please check network/rules.");
+            }
         } else {
-            activeTripId = null;
+            // If activeTripId was already null, just ensure the UI is reset
+            // This is the correct logic for the 'else' case
             document.getElementById('startTripSection').style.display = 'block';
             document.getElementById('tripStatus').style.display = 'none';
-            checkStartButtonEligibility();
+            document.getElementById('departureTimeDisplay').textContent = '';
+            document.getElementById('recordDepartureBtn').disabled = false;
+            checkStartButtonEligibility(); 
         }
     }
 }
+
+// ----------------------------------------------------------------------
+// LOGOUT LOGIC
+// ----------------------------------------------------------------------
 
 async function driverLogout() {
-    const activeTripId = localStorage.getItem('activeTripId'); 
-    
-    // Step 1: Securely complete the active trip
+    // 1. Check for active trip and prompt to end
     if (activeTripId) {
-        try {
-            await db.collection('trips').doc(activeTripId).update({
-                status: 'Completed',
-                end_time: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            console.log("Trip successfully marked as 'Completed'.");
-        } catch (error) {
-            console.error("FIREBASE ERROR: Failed to complete active trip:", error);
+        const confirmLogout = confirm("A trip is currently active. Please END the trip before logging out. Do you want to end it now?");
+        if (confirmLogout) {
+            // AWAIT the endTrip function to ensure database updates complete before signing out.
+            await endTrip(); 
+        } else {
+            return; // User chose NOT to end the trip, so stop logout process.
         }
     }
-
-    // Step 2: Clear Local Data (Confirmed working)
-    localStorage.removeItem('activeTripId'); 
-    console.log("Local trip data cleared.");
     
-    // Step 3: Perform Firebase Logout and Redirect
-    // If the firebase-auth.js script isn't loaded, this fails silently.
-    firebase.auth().signOut()
-        .then(() => {
-            console.log("SUCCESS: Firebase sign out completed. Redirecting...");
-            window.location.href = 'index.html'; 
-        })
-        .catch((error) => {
-            console.error("CRITICAL AUTH ERROR: Firebase Sign Out Failed:", error);
-            alert("Logout failed! Check HTML script loading.");
-        });
+    // 2. Perform the sign-out action
+    auth.signOut().then(() => {
+        // Redirect to the login page
+        window.location.replace('index.html'); 
+    }).catch((error) => {
+        console.error("Logout Error:", error);
+        alert(`Logout failed: ${error.message}`);
+    });
 }
-
-// ----------------------------------------------------------------------
-// SIMPLE WEATHER FEATURE - Uses Open-Meteo API (No key needed)
-// ----------------------------------------------------------------------
-function fetchWeather(lat, lng) {
-    const weatherDisplay = document.getElementById('weatherDisplay');
-    if (!weatherDisplay) return;
-
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
-
-    fetch(url)
-        .then(res => res.json())
-        .then(data => {
-            if (data && data.current_weather) {
-                const temp = data.current_weather.temperature;
-                const wind = data.current_weather.windspeed;
-                const code = data.current_weather.weathercode;
-
-                // Base weather text
-                let weatherText = `Weather: ${temp}°C, Wind ${wind} km/h`;
-
-                // 🌧️ Weather code meaning (based on Open-Meteo docs)
-                // 51–67 → Drizzle/Rain, 80–99 → Showers/Thunderstorms
-                const rainyCodes = [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99];
-
-                if (rainyCodes.includes(code)) {
-                    weatherText += " ⚠️ Heavy rain — network connectivity may be poor.";
-                    weatherDisplay.style.color = "#d32f2f"; // Red warning color
-                    weatherDisplay.style.fontWeight = "bold";
-                } else {
-                    weatherDisplay.style.color = "#2e7d32"; // Normal green for clear weather
-                    weatherDisplay.style.fontWeight = "normal";
-                }
-
-                weatherDisplay.textContent = weatherText;
-            } else {
-                weatherDisplay.textContent = "Weather: Not available";
-            }
-        })
-        .catch(err => {
-            console.error("Weather fetch error:", err);
-            weatherDisplay.textContent = "Weather: Error fetching data";
-        });
-}
-

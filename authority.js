@@ -1,212 +1,230 @@
-// Assuming 'db' (Firestore) and 'firebase' (Auth) objects are initialized elsewhere.
-// Note: In a real module-based project, you'd use 'import' instead of global variables.
+// authority.js
+const firebaseConfig = {
+    apiKey: "AIzaSyAF8Vq1SX1vnb3nJfszWDYYZQ1MbJVwMXQ",
+    authDomain: "nimbus-27588.firebaseapp.com",
+    projectId: "nimbus-27588",
+    storageBucket: "nimbus-27588.firebasestorage.app",
+    messagingSenderId: "582331828095",
+    appId: "1:582331828095:web:62b276f03f25e9ba937c4a",
+    measurementId: "G-73M7E8ZF4N"
+};
 
-// --- Global Lookup Caches (Optimization: Data is loaded here once on page load) ---
-let routesCache = {};
-let vehiclesCache = {};
-let driversCache = {};
+// Initialize Firebase
+const app = firebase.initializeApp(firebaseConfig);
+const auth = app.auth();
+const db = firebase.firestore();
 
-// --- HELPER FUNCTIONS ---
+// Get references to HTML elements globally
+const logoutButton = document.querySelector('.logout-btn');
+const activeTripsCountEl = document.getElementById('activeTripsCount');
+const delayedTripsCountEl = document.getElementById('delayedTripsCount');
+const cancelledTripsCountEl = document.getElementById('cancelledTripsCount');
+const liveActivityBodyEl = document.getElementById('liveActivityBody');
 
-function getStatusClass(status) {
-    switch (status) {
-        case 'Ontime': return 'status-Ontime';
-        case 'Delayed': return 'status-Delayed';
-        default: return ''; 
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Start listening for all trip updates immediately
+    if (typeof db !== 'undefined') {
+        fetchAllTripData();
+    } else {
+        console.error("Firebase Firestore 'db' object is not defined.");
+        document.getElementById('liveActivityBody').innerHTML = 
+            '<tr><td colspan="7" style="text-align:center; color: red;">Error: Firebase not loaded.</td></tr>';
     }
-}
-
-function formatTimestampToTime(timestamp) {
-    // Improvement: Add explicit check for the 'seconds' property of a valid Firestore Timestamp
-    if (!timestamp || typeof timestamp.toDate !== 'function' || !timestamp.seconds) return 'N/A';
     
-    const date = timestamp.toDate(); 
-    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    // Firebase Logout Logic
+    if (logoutButton && typeof auth !== 'undefined') {
+        logoutButton.addEventListener('click', (event) => {
+            event.preventDefault(); 
+            auth.signOut().then(() => {
+                console.log("Logout successful. Redirecting...");
+                window.location.href = 'index.html'; 
+            }).catch((error) => {
+                console.error("Firebase Logout Error:", error);
+                alert("Logout failed: " + error.message);
+            });
+        });
+    }
+});
+
+
+// -----------------------------------------------------------------
+// --- Metadata Fetching (Includes Driver/User Lookup) ---
+// -----------------------------------------------------------------
+
+/**
+ * Fetches all necessary metadata (Routes, Vehicles, Drivers/Users) once 
+ */
+async function fetchMetadata() {
+    // Fetching from routes, vehicles, and the 'users' collection for driver details
+    const [routesSnapshot, vehiclesSnapshot, usersSnapshot] = await Promise.all([
+        db.collection('routes').get(),
+        db.collection('vehicles').get(),
+        db.collection('users').get(), // Fetch user/driver data
+    ]);
+
+    const metadata = { routes: {}, vehicles: {}, drivers: {} };
+
+    routesSnapshot.forEach(doc => {
+        metadata.routes[doc.id] = doc.data().routename || 'Unknown Route';
+    });
+
+    vehiclesSnapshot.forEach(doc => {
+        const data = doc.data();
+        metadata.vehicles[doc.id] = {
+            plate: data.license_plate || 'N/A',
+            display: data.display_name || 'Unknown Bus',
+        };
+    });
+
+    // Map User ID (Doc ID) to Username
+    usersSnapshot.forEach(doc => {
+        // Assuming the user document ID matches trip.driver_id, and the field is 'username'
+        metadata.drivers[doc.id] = doc.data().username || 'Unknown Driver'; 
+    });
+
+    return metadata;
 }
 
-// --- DATA FETCHING & RENDERING (Real-Time Listener) ---
+// -----------------------------------------------------------------
+// --- Real-time Data Listener ---
+// -----------------------------------------------------------------
 
-// Renamed and changed to be synchronous, relying on pre-loaded global caches
-function startLiveMonitoring() { 
-    // 2. Set up Real-Time Listener on 'trips' collection
+/**
+ * Subscribes to real-time updates for ALL tracked trip statuses.
+ */
+async function fetchAllTripData() {
+    // 1. Fetch static metadata first
+    const metadata = await fetchMetadata().catch(e => {
+        console.error("Failed to load metadata:", e);
+        // Ensure drivers object is included in the fallback metadata
+        return { routes: {}, vehicles: {}, drivers: {} };
+    });
+
+    // 2. Listener for 'trips' collection.
+    // NOTE: Update the 'in' array if you want to include 'Scheduled' trips.
     db.collection('trips')
-        .where('current_status', 'in', ['Ontime', 'Delayed']) 
+        .where('current_status', 'in', ['Ontime', 'Delayed', 'Cancelled']) 
         .onSnapshot(snapshot => {
-            
-            // 🔥 FINAL FIX: Grouping/Filtering logic to handle persistent duplicates
-            const latestTripsMap = new Map();
-            
+            const allTrips = [];
             snapshot.forEach(doc => {
-                const trip = doc.data();
-                const driverId = trip.driver_id;
-                const routeId = trip.route_id;
-
-                // Use Driver + Route as the unique key
-                const uniqueTripKey = ${driverId}_${routeId}; 
-
-                // Prioritize the LATEST timestamp from status change or location update
-                const latestStatusTime = trip.last_status_time || trip.last_updated || trip.trip_start_time;
-
-                if (latestStatusTime && latestStatusTime.seconds) {
-                    const existingEntry = latestTripsMap.get(uniqueTripKey);
-
-                    if (existingEntry) {
-                        // Keep the document with the latest timestamp
-                        if (latestStatusTime.seconds > (existingEntry.timestamp.seconds || 0)) {
-                            latestTripsMap.set(uniqueTripKey, { trip: trip, timestamp: latestStatusTime });
-                        }
-                    } else {
-                        // First entry for this key
-                        latestTripsMap.set(uniqueTripKey, { trip: trip, timestamp: latestStatusTime });
-                    }
-                }
+                allTrips.push({ id: doc.id, ...doc.data() });
             });
-
-            // 3. Process the LATEST trips only
-            const activeTripsData = [];
-            let delayedCount = 0;
-            
-            latestTripsMap.forEach(({ trip }) => {
-                
-                // --- Trip Details Lookup (NOW USING GLOBAL CACHES) ---
-                const driverId = trip.driver_id;
-                const vehicleId = trip.vehicle_id;
-                const routeId = trip.route_id;
-
-                const driverData = driversCache[driverId] || { username: 'N/A (Driver Not Found)' }; 
-                const vehicleData = vehiclesCache[vehicleId] || { display_name: 'N/A', license_plate: 'N/A' };
-                const routeData = routesCache[routeId] || { routename: 'N/A' }; 
-
-                // --- Time Formatting ---
-                const scheduledTime = formatTimestampToTime(trip.scheduled_departure_time);
-                const actualTime = formatTimestampToTime(trip.actual_departure_time); 
-
-                // --- Count Delayed Trips ---
-                if (trip.current_status === 'Delayed') {
-                    delayedCount++;
-                }
-
-                // --- Create consolidated data object for the table ---
-                activeTripsData.push({
-                    driverUsername: driverData.username,
-                    busName: vehicleData.display_name,
-                    plateNumber: vehicleData.license_plate,
-                    routeName: routeData.routename || 'N/A', 
-                    scheduledTime: scheduledTime,
-                    actualTime: actualTime,
-                    status: trip.current_status,
-                });
-            });
-
-            // --- Update Dashboard Stats & Table ---
-            document.getElementById('activeTripsCount').textContent = activeTripsData.length;
-            document.getElementById('delayedTripsCount').textContent = delayedCount;
-            renderDriverActivityTable(activeTripsData);
+            // 3. Render all retrieved trips
+            renderTripData(allTrips, metadata); 
         }, error => {
-             console.error("Firestore Listen Error:", error);
+            console.error("Error listening to all trip updates:", error);
+            document.getElementById('liveActivityBody').innerHTML = 
+                '<tr><td colspan="7" style="text-align:center; color: red;">Failed to load live data from Firestore.</td></tr>';
         });
 }
 
+// -----------------------------------------------------------------
+// --- Utility Functions ---
+// -----------------------------------------------------------------
 
-function renderDriverActivityTable(trips) {
-    const tableBody = document.getElementById('driverActivityBody');
-    // Clear the table body
-    tableBody.innerHTML = '';
+/**
+ * Converts Firebase Timestamp objects to a readable time string.
+ */
+function formatTime(timestamp) {
+    if (!timestamp || typeof timestamp.toDate !== 'function') {
+        return 'N/A';
+    }
+    const date = timestamp.toDate();
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+}
 
-    // Sort: Delayed first, then by scheduled time
-    trips.sort((a, b) => {
-        if (a.status === 'Delayed' && b.status !== 'Delayed') return -1;
-        if (a.status !== 'Delayed' && b.status === 'Delayed') return 1;
-        return a.scheduledTime.localeCompare(b.scheduledTime);
-    });
+// -----------------------------------------------------------------
+// --- Data Rendering ---
+// -----------------------------------------------------------------
+
+/**
+ * Renders the trip data into the HTML table and updates the card counts.
+ */
+function renderTripData(trips, metadata) {
+    const tbody = document.getElementById('liveActivityBody');
+    tbody.innerHTML = ''; // Clear previous data
+
+    let activeCount = 0;
+    let delayedCount = 0;
+    let cancelledCount = 0;
 
     if (trips.length === 0) {
-         tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No active trips found.</td></tr>';
-         return;
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No trips found.</td></tr>';
     }
 
-    // Improvement: Build rows into an array and update the DOM once (performance boost)
-    const rows = trips.map(trip => {
-        const statusClass = getStatusClass(trip.status);
+    // Define table headers for the data-label attribute (mobile)
+    const headers = [
+        "Driver Username", 
+        "Bus Name", 
+        "Plate Number", 
+        "Route Name", 
+        "Scheduled Departure Time", 
+        "Actual Departure Time", 
+        "Status"
+    ];
+
+    trips.forEach(trip => {
+        const status = trip.current_status || 'Ontime';
         
-        return `
-            <tr>
-                <td><strong>${trip.driverUsername}</strong></td>
-                <td>${trip.busName}</td>
-                <td>${trip.plateNumber}</td>
-                <td>${trip.routeName}</td>
-                <td>${trip.scheduledTime}</td>
-                <td><strong>${trip.actualTime}</strong></td>
-                <td><span class="status-badge ${statusClass}">${trip.status}</span></td>
-            </tr>
-        `;
+        // --- 1. Update Counters ---
+        if (status === "Delayed") {
+            delayedCount++;
+            activeCount++;
+        } else if (status === "Ontime") {
+            activeCount++;
+        } else if (status === "Cancelled") {
+            cancelledCount++;
+        }
+
+        // --- 2. Determine Styling ---
+        let rowClass = '';
+        let statusClass = status;
+        
+        if (status === "Delayed") {
+            rowClass = 'delayed-row';
+        } else if (status === "Cancelled") {
+            rowClass = 'cancelled-row';
+        }
+
+        // --- 3. Resolve IDs to Names & Format Data (cellData calculation) ---
+        const vehicleInfo = metadata.vehicles[trip.vehicle_id] || { plate: 'N/A', display: 'Unknown Bus' };
+        const routeName = metadata.routes[trip.route_id] || 'Unknown Route';
+        
+        // Use metadata.drivers (populated from 'users' collection) to get the username
+        const driverUsername = metadata.drivers[trip.driver_id] || 'Unknown Driver';
+        
+        const cellData = [
+            driverUsername, // Resolved username
+            vehicleInfo.display, 
+            vehicleInfo.plate,  
+            routeName,          
+            formatTime(trip.scheduled_departure_time),
+            formatTime(trip.actual_departure_time),
+            `<span class="status-badge ${statusClass}">${status}</span>`
+        ];
+
+        // --- 4. Render Row and Cells ---
+        const row = tbody.insertRow();
+        
+        // FIX: Only add class if rowClass is not empty (prevents DOMTokenList error)
+        if (rowClass) {
+            row.classList.add(rowClass);
+        }
+        
+        cellData.forEach((data, index) => {
+            const cell = row.insertCell();
+            
+            // Add the data-label attribute for mobile styling
+            cell.setAttribute('data-label', headers[index]); 
+            
+            cell.innerHTML = data;
+        });
     });
-    
-    // Set the innerHTML once
-    tableBody.innerHTML = rows.join('');
-}
 
-
-// --- INITIALIZATION & MAIN EXECUTION ---
-
-// New function to fetch initial data and start the monitoring
-async function initializeDataAndMonitoring() {
-    console.log("1. Fetching initial lookup data (Routes, Drivers, Vehicles)...");
-
-    // 1. Get initial data for routes, users (drivers), and vehicles (for lookup)
-    const [routesSnapshot, usersSnapshot, vehiclesSnapshot] = await Promise.all([
-        db.collection('routes').get(),
-        db.collection('users').where('role', '==', 'Driver').get(), 
-        db.collection('vehicles').get()
-    ]);
-
-    // Convert snapshots to global lookup maps
-    routesCache = routesSnapshot.docs.reduce((acc, doc) => { acc[doc.id] = doc.data(); return acc; }, {});
-    vehiclesCache = vehiclesSnapshot.docs.reduce((acc, doc) => { acc[doc.id] = doc.data(); return acc; }, {});
-    driversCache = usersSnapshot.docs.reduce((acc, doc) => { 
-        acc[doc.id] = { username: doc.data().username || doc.data().email || doc.id, ...doc.data() }; 
-        return acc; 
-    }, {});
-    
-    console.log("2. Initial data loaded. Starting live trip monitoring.");
-    startLiveMonitoring();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    initializeDataAndMonitoring();
-});
-
-// --- LOGOUT FUNCTION ---
-async function authorityLogout() {
-    // 1. Check for Firebase App and Auth Service availability
-    // Check if the firebase variable and the auth method exist.
-    // Assuming 'firebase' is the globally available object from the SDK.
-    if (typeof firebase === 'undefined' || typeof firebase.auth !== 'function') {
-        console.error("🚨 Firebase Auth service is unavailable. Cannot log out.");
-        // Redirect regardless, as we can't perform an actual logout, 
-        // but want to prevent access to protected content.
-        window.location.replace('index.html'); 
-        return;
-    }
-
-    try {
-        // 2. Perform the sign-out action
-        // firebase.auth() returns the Auth instance
-        await firebase.auth().signOut(); 
-
-        // 3. Handle success
-        console.log("✅ Authority sign-out successful. Redirecting to login.");
-        // Use location.assign or location.replace for redirection
-        window.location.replace('index.html'); 
-
-    } catch (error) {
-        // 4. Handle errors
-        console.error("❌ Authority Logout Error:", error);
-        // Display a user-friendly error message using a template literal
-        alert(`Authority Logout failed: ${error.message}`);
-        // Consider if you should still redirect on error, 
-        // or if the user should try again. 
-        // For a critical error, often a redirect is safest.
-        window.location.replace('index.html'); 
-    }
+    // --- 5. Update Card Displays ---
+    document.getElementById('activeTripsCount').textContent = activeCount;
+    document.getElementById('delayedTripsCount').textContent = delayedCount;
+    document.getElementById('cancelledTripsCount').textContent = cancelledCount;
 }

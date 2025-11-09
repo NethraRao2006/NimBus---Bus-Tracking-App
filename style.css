@@ -14,7 +14,7 @@ body {
   justify-content: center;
   min-height: 100vh;
 }
-/* Must be placed outside any selector like h1 */
+
 h1 {
     /* FONT STACK: Ensures universal compatibility and speed */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
@@ -63,6 +63,12 @@ h1:hover {
     cursor: pointer;
 }
 
+/* Hover Effect: Exaggerated Glitch/Shift and Enhanced Glow */
+
+.bus_icon{
+  height:100px;
+  width:auto;
+}
 .subtitle {
   font-size: 1rem;
   color: #333;
@@ -294,4 +300,73 @@ footer {
 .popup-content input {
   /* ... (Keep existing input styles) ... */
   transition: border-color 0.3s;
+}
+/* --- RESPONSIVE DESIGN ENHANCEMENTS (Media Queries) --- */
+
+/* 1. Max-width on body content for large screens and alignment */
+/* The main content body is already reasonably centered, but let's ensure it doesn't stretch too wide. */
+.card-container {
+    /* Ensures the container doesn't get ridiculously wide on large monitors */
+    max-width: 1200px; 
+    margin: 0 auto; /* Center the container itself */
+    padding: 40px 15px; /* Adjust padding for all screen sizes */
+}
+
+/* 2. Mobile-first adjustments (Small screens like phones) */
+@media (max-width: 768px) {
+    
+    /* Adjustments for the main heading (h1) on smaller screens */
+    h1 {
+        /* Fluid typography already helps, but add more vertical margin */
+        margin: 20px auto;
+        /* Increase max-width to allow more space for wrapping */
+        max-width: 95%; 
+        font-size: 4em;
+    }
+
+    /* Card adjustments for stacking on small screens */
+    .card-container {
+        /* Let cards fill more of the available width */
+        gap: 30px; /* Reduce gap between stacked cards */
+        padding: 30px 10px; /* Reduce horizontal padding */
+    }
+
+    .card {
+        /* Cards should take up a larger percentage of the width to avoid being too small */
+        width: 100%; 
+        max-width: 320px; /* Set a max-width for very small viewports */
+        margin: 0 auto; /* Center cards when they stack */
+        padding: 30px 20px; /* Slightly reduced card padding */
+    }
+
+    /* Subtitle size adjustment for better readability on mobile */
+    .subtitle {
+        font-size: 0.95rem;
+        padding: 0 10px;
+    }
+
+    /* Adjustments for the Popup form on small screens */
+    .popup-content {
+        width: 90%; /* Take up most of the screen width */
+        margin: 20px; /* Ensure some margin around the popup */
+        padding: 20px;
+    }
+
+    /* Scale down the large icon in the header */
+    .bus_icon {
+        height: 60px;
+    }
+}
+
+/* 3. Tablet/Mid-Screen adjustments (Optional, but good for two-column layouts) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .card-container {
+        /* Ensure there's enough space for the cards side-by-side */
+        gap: 60px;
+    }
+
+    .card {
+        /* Allow cards to be slightly more flexible in width */
+        width: calc(50% - 30px); /* Two cards per row with a gap */
+    }
 }

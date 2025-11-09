@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,314 +10,318 @@
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.6.8/firebase-auth.js"></script> 
     <style>
-       body {
-    /* Kept: Clean font stack */
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    /* Updated: Softer, subtle background texture */
-    background-color: #f5f8fb; /* A very light, professional off-white/blue */
-    color: #333;
-    margin: 0;
-    padding: 20px;
-    /* Smooth background transition for any future theme change */
-    transition: background-color 0.4s;
-}
+        /* =====================================================
+           01. BASE STYLES & LAYOUT (Refined)
+        ===================================================== 
+        */
+        body {
+            /* Kept: Clean font stack */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            /* Updated: Softer, subtle background texture */
+            background-color: #f5f8fb; /* A very light, professional off-white/blue */
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            /* Smooth background transition for any future theme change */
+            transition: background-color 0.4s;
+        }
 
-.container {
-    max-width: 950px; /* Slightly wider container */
-    margin: 0 auto;
-    background: #fff;
-    padding: 40px; /* More padding for breathing room */
-    border-radius: 16px; /* Slightly larger radius for a modern feel */
-    /* Updated: Softer, layered shadow */
-    box-shadow: 
-        0 10px 30px rgba(0,0,0,0.08), 
-        0 3px 10px rgba(0,0,0,0.04);
-    /* Updated: Strong, clean primary color accent bar */
-    border-top: 6px solid #007bff; 
-    transition: box-shadow 0.3s;
-}
+        .container {
+            max-width: 950px; /* Slightly wider container */
+            margin: 0 auto;
+            background: #fff;
+            padding: 40px; /* More padding for breathing room */
+            border-radius: 16px; /* Slightly larger radius for a modern feel */
+            /* Updated: Softer, layered shadow */
+            box-shadow: 
+                0 10px 30px rgba(0,0,0,0.08), 
+                0 3px 10px rgba(0,0,0,0.04);
+            /* Updated: Strong, clean primary color accent bar */
+            border-top: 6px solid #007bff; 
+            transition: box-shadow 0.3s;
+        }
 
-h2 {
-    color: #007bff;
-    /* Updated: Softer divider line */
-    border-bottom: 1px solid #e2e8f0; 
-    padding-bottom: 15px;
-    margin-bottom: 30px; /* More space below the heading */
-    font-weight: 700;
-    letter-spacing: -0.5px;
-}
+        h2 {
+            color: #007bff;
+            /* Updated: Softer divider line */
+            border-bottom: 1px solid #e2e8f0; 
+            padding-bottom: 15px;
+            margin-bottom: 30px; /* More space below the heading */
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
 
-/* =====================================================
-    02. FORM ELEMENTS (Sleek & Interactive)
-===================================================== 
-*/
-label {
-    display: block;
-    margin-top: 20px; /* More space above labels */
-    font-weight: 600;
-    color: #1e293b; /* Darker, more serious label color */
-}
+        /* =====================================================
+           02. FORM ELEMENTS (Sleek & Interactive)
+        ===================================================== 
+        */
+        label {
+            display: block;
+            margin-top: 20px; /* More space above labels */
+            font-weight: 600;
+            color: #1e293b; /* Darker, more serious label color */
+        }
 
-select, input[type="text"] {
-    width: 100%;
-    padding: 12px; /* Increased padding */
-    margin-top: 8px;
-    border-radius: 8px; /* Slightly larger radius for inputs */
-    border: 1px solid #cbd5e1; /* Subtle, light border */
-    font-size: 16px;
-    box-sizing: border-box;
-    transition: border-color 0.3s, box-shadow 0.3s;
-    background-color: #fafafa;
-}
+        select, input[type="text"] {
+            width: 100%;
+            padding: 12px; /* Increased padding */
+            margin-top: 8px;
+            border-radius: 8px; /* Slightly larger radius for inputs */
+            border: 1px solid #cbd5e1; /* Subtle, light border */
+            font-size: 16px;
+            box-sizing: border-box;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            background-color: #fafafa;
+        }
 
-select:focus, input[type="text"]:focus {
-    border-color: #007bff;
-    /* Subtle blue focus ring */
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2); 
-    outline: none;
-    background-color: #fff;
-}
+        select:focus, input[type="text"]:focus {
+            border-color: #007bff;
+            /* Subtle blue focus ring */
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2); 
+            outline: none;
+            background-color: #fff;
+        }
 
-button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    padding: 12px 25px; /* More substantial button */
-    margin-top: 30px;
-    border-radius: 8px; 
-    cursor: pointer;
-    font-size: 17px;
-    font-weight: 600;
-    transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
-}
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 25px; /* More substantial button */
+            margin-top: 30px;
+            border-radius: 8px; 
+            cursor: pointer;
+            font-size: 17px;
+            font-weight: 600;
+            transition: background-color 0.3s, transform 0.2s, box-shadow 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+        }
 
-button:hover {
-    background-color: #0056b3;
-    transform: translateY(-1px); /* Subtle lift on hover */
-    box-shadow: 0 6px 15px rgba(0, 123, 255, 0.3);
-}
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px); /* Subtle lift on hover */
+            box-shadow: 0 6px 15px rgba(0, 123, 255, 0.3);
+        }
 
-/* =====================================================
-    03. RESULTS SECTION (Table & Cards)
-===================================================== 
-*/
+        /* =====================================================
+           03. RESULTS SECTION (Table & Cards)
+        ===================================================== 
+        */
 
-/* General Table Style */
-#scheduledTripsTable { 
-    width: 100%; 
-    border-collapse: collapse; 
-    margin-top: 25px;
-    border-radius: 8px;
-    overflow: hidden; /* Ensures border-radius applies to corners */
-}
-#scheduledTripsTable thead tr { 
-    /* Updated: Deeper, more professional header background */
-    background-color: #007bff; 
-    color: white;
-}
-#scheduledTripsTable th {
-    padding: 15px 12px; 
-    font-weight: 600;
-    text-align: left;
-    border: none; /* Remove table header borders */
-    text-transform: uppercase;
-    font-size: 0.9rem;
-    letter-spacing: 0.5px;
-}
+        /* General Table Style */
+        #scheduledTripsTable { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 25px;
+            border-radius: 8px;
+            overflow: hidden; /* Ensures border-radius applies to corners */
+        }
+        #scheduledTripsTable thead tr { 
+            /* Updated: Deeper, more professional header background */
+            background-color: #007bff; 
+            color: white;
+        }
+        #scheduledTripsTable th {
+            padding: 15px 12px; 
+            font-weight: 600;
+            text-align: left;
+            border: none; /* Remove table header borders */
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 0.5px;
+        }
 
-#scheduledTripsTable td { 
-    padding: 12px; 
-    border-bottom: 1px solid #e0e0e0; 
-    text-align: left;
-    transition: background-color 0.3s;
-}
+        #scheduledTripsTable td { 
+            padding: 12px; 
+            border-bottom: 1px solid #e0e0e0; 
+            text-align: left;
+            transition: background-color 0.3s;
+        }
 
-/* Zebra Striping */
-#scheduledTripsBody tr:nth-child(even) { 
-    background-color: #f7f9fc; /* Very light striping */
-}
+        /* Zebra Striping */
+        #scheduledTripsBody tr:nth-child(even) { 
+            background-color: #f7f9fc; /* Very light striping */
+        }
 
-/* Highlight Cancelled rows */
-#scheduledTripsBody tr.cancelled-row {
-    background-color: #fff1f2; /* Lighter, subtle red */
-    color: #ef4444; /* Brighter, modern red text */
-    opacity: 0.8; 
-    cursor: not-allowed;
-}
+        /* Highlight Cancelled rows */
+        #scheduledTripsBody tr.cancelled-row {
+            background-color: #fff1f2; /* Lighter, subtle red */
+            color: #ef4444; /* Brighter, modern red text */
+            opacity: 0.8; 
+            cursor: not-allowed;
+        }
 
-/* Row Hover Effect */
-#scheduledTripsBody tr:not(.cancelled-row):hover { 
-    background-color: #e6f7ff; /* Light blue tint on hover */
-    cursor: pointer;
-}
+        /* Row Hover Effect */
+        #scheduledTripsBody tr:not(.cancelled-row):hover { 
+            background-color: #e6f7ff; /* Light blue tint on hover */
+            cursor: pointer;
+        }
 
-/* Result Cards for Active Buses */
-.result-card {
-    padding: 15px;
-    margin: 12px 0;
-    background-color: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px; /* Consistent border radius */
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    cursor: pointer;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
-    /* Primary color indicator on the left */
-    border-left: 6px solid #007bff; 
-    display: flex; /* Flexbox for better content arrangement inside card */
-    justify-content: space-between;
-    align-items: center;
-}
-.result-card:hover {
-    transform: translateY(-3px); /* More pronounced lift */
-    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-}
+        /* Result Cards for Active Buses */
+        .result-card {
+            padding: 15px;
+            margin: 12px 0;
+            background-color: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px; /* Consistent border radius */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+            /* Primary color indicator on the left */
+            border-left: 6px solid #007bff; 
+            display: flex; /* Flexbox for better content arrangement inside card */
+            justify-content: space-between;
+            align-items: center;
+        }
+        .result-card:hover {
+            transform: translateY(-3px); /* More pronounced lift */
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
 
-/* Status Badges */
-.status-badge {
-    display: inline-block;
-    padding: 5px 10px; /* Slightly more padding */
-    margin-left: 10px;
-    border-radius: 50px; /* Pill shape badge */
-    font-size: 0.75rem; /* Slightly smaller for cleaner look */
-    font-weight: 700;
-    color: white;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-.status-ontime { 
-    background-color: #10b981; /* Tailwind Green-500 */
-    box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3);
-} 
-.status-delayed { 
-    background-color: #f59e0b; /* Tailwind Amber-500 */
-    box-shadow: 0 2px 5px rgba(245, 158, 11, 0.3);
-} 
-.status-cancelled { 
-    background-color: #ef4444; /* Tailwind Red-500 */
-    box-shadow: 0 2px 5px rgba(239, 68, 68, 0.3);
-} 
-.status-scheduled { 
-    background-color: #6b7280; /* Tailwind Gray-500 */
-}
+        /* Status Badges */
+        .status-badge {
+            display: inline-block;
+            padding: 5px 10px; /* Slightly more padding */
+            margin-left: 10px;
+            border-radius: 50px; /* Pill shape badge */
+            font-size: 0.75rem; /* Slightly smaller for cleaner look */
+            font-weight: 700;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .status-ontime { 
+            background-color: #10b981; /* Tailwind Green-500 */
+            box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3);
+        } 
+        .status-delayed { 
+            background-color: #f59e0b; /* Tailwind Amber-500 */
+            box-shadow: 0 2px 5px rgba(245, 158, 11, 0.3);
+        } 
+        .status-cancelled { 
+            background-color: #ef4444; /* Tailwind Red-500 */
+            box-shadow: 0 2px 5px rgba(239, 68, 68, 0.3);
+        } 
+        .status-scheduled { 
+            background-color: #6b7280; /* Tailwind Gray-500 */
+        }
 
-/* Detail View */
-#mapContainer { 
-    height: 380px; /* Slightly taller map */
-    margin-top: 30px; 
-    border-radius: 10px; 
-    border: 1px solid #e0e0e0;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-}
-.detail-info {
-    margin-top: 30px;
-    padding: 20px;
-    /* Light blue background for emphasis */
-    background-color: #e6f7ff; 
-    border-radius: 10px;
-    border: 1px solid #b3e5fc;
-}
+        /* Detail View */
+        #mapContainer { 
+            height: 380px; /* Slightly taller map */
+            margin-top: 30px; 
+            border-radius: 10px; 
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .detail-info {
+            margin-top: 30px;
+            padding: 20px;
+            /* Light blue background for emphasis */
+            background-color: #e6f7ff; 
+            border-radius: 10px;
+            border: 1px solid #b3e5fc;
+        }
 
-/* =====================================================
-    04. MEDIA QUERIES (Enhanced Mobile Card Design)
-===================================================== 
-*/
-@media screen and (max-width: 600px) {
-    /* Ensure the container fully uses mobile width with some padding */
-    .container {
-        padding: 20px 15px; 
-        border-radius: 0; /* Full-width on tiny screens looks better without corner radius */
-        box-shadow: none; /* Remove shadows on mobile for performance and flatness */
-    }
-    
-    /* Input adjustments for better mobile tapping */
-    select, input[type="text"], button {
-        font-size: 15px;
-        padding: 10px;
-        border-radius: 6px;
-    }
+        /* =====================================================
+           04. MEDIA QUERIES (Enhanced Mobile Card Design)
+        ===================================================== 
+        */
+        @media screen and (max-width: 600px) {
+            /* Ensure the container fully uses mobile width with some padding */
+            .container {
+                padding: 20px 15px; 
+                border-radius: 0; /* Full-width on tiny screens looks better without corner radius */
+                box-shadow: none; /* Remove shadows on mobile for performance and flatness */
+            }
+            
+            /* Input adjustments for better mobile tapping */
+            select, input[type="text"], button {
+                font-size: 15px;
+                padding: 10px;
+                border-radius: 6px;
+            }
 
-    /* Hide table header on small screens */
-    #scheduledTripsTable thead {
-        display: none;
-    }
+            /* Hide table header on small screens */
+            #scheduledTripsTable thead {
+                display: none;
+            }
 
-    /* Force table to act like a list */
-    #scheduledTripsTable table, 
-    #scheduledTripsTable tbody, 
-    #scheduledTripsTable th, 
-    #scheduledTripsTable td, 
-    #scheduledTripsTable tr {
-        display: block;
-        width: 100%;
-        font-size: 14px;
-    }
-    
-    /* Style the row as a card */
-    #scheduledTripsTable tr {
-        margin-bottom: 15px; /* More separation between rows */
-        border: 1px solid #e0e0e0;
-        border-radius: 10px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        border-left: 6px solid #007bff; 
-        box-sizing: border-box; 
-        transition: none; /* Disable 3D transform hover on mobile */
-    }
-    
-    /* Style the table cells */
-    #scheduledTripsTable td {
-        border: none; 
-        border-bottom: 1px dotted #e0e0e0;
-        position: relative;
-        padding-left: 50%; /* INCREASED: Give even more space for the value */
-        padding-right: 15px; /* Better right padding */
-        text-align: right;
-        min-height: 40px; 
-        box-sizing: border-box; 
-    }
-    
-    /* Last cell in the row */
-    #scheduledTripsTable tr td:last-child {
-        border-bottom: 0;
-    }
+            /* Force table to act like a list */
+            #scheduledTripsTable table, 
+            #scheduledTripsTable tbody, 
+            #scheduledTripsTable th, 
+            #scheduledTripsTable td, 
+            #scheduledTripsTable tr {
+                display: block;
+                width: 100%;
+                font-size: 14px;
+            }
+            
+            /* Style the row as a card */
+            #scheduledTripsTable tr {
+                margin-bottom: 15px; /* More separation between rows */
+                border: 1px solid #e0e0e0;
+                border-radius: 10px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+                border-left: 6px solid #007bff; 
+                box-sizing: border-box; 
+                transition: none; /* Disable 3D transform hover on mobile */
+            }
+            
+            /* Style the table cells */
+            #scheduledTripsTable td {
+                border: none; 
+                border-bottom: 1px dotted #e0e0e0;
+                position: relative;
+                padding-left: 50%; /* INCREASED: Give even more space for the value */
+                padding-right: 15px; /* Better right padding */
+                text-align: right;
+                min-height: 40px; 
+                box-sizing: border-box; 
+            }
+            
+            /* Last cell in the row */
+            #scheduledTripsTable tr td:last-child {
+                border-bottom: 0;
+            }
 
-    /* Use data-label attribute to display the column header as a label */
-    #scheduledTripsTable td:before {
-        content: attr(data-label);
-        position: absolute;
-        left: 15px;
-        width: 45%; 
-        padding-right: 5px; 
-        white-space: nowrap; /* Prevent label text wrapping */
-        overflow: hidden;
-        text-overflow: ellipsis; /* Optional: truncate long labels */
-        text-align: left;
-        font-weight: 600;
-        color: #374151; /* Slightly darker label */
-        box-sizing: border-box; 
-    }
-    
-    /* Make the active bus cards stack better on mobile */
-    .result-card {
-        padding: 12px;
-        margin: 8px 0;
-        width: 100%;
-        border-radius: 8px;
-    }
+            /* Use data-label attribute to display the column header as a label */
+            #scheduledTripsTable td:before {
+                content: attr(data-label);
+                position: absolute;
+                left: 15px;
+                width: 45%; 
+                padding-right: 5px; 
+                white-space: nowrap; /* Prevent label text wrapping */
+                overflow: hidden;
+                text-overflow: ellipsis; /* Optional: truncate long labels */
+                text-align: left;
+                font-weight: 600;
+                color: #374151; /* Slightly darker label */
+                box-sizing: border-box; 
+            }
+            
+            /* Make the active bus cards stack better on mobile */
+            .result-card {
+                padding: 12px;
+                margin: 8px 0;
+                width: 100%;
+                border-radius: 8px;
+            }
 
-    /* Adjust map container height for mobile */
-    #mapContainer {
-        height: 200px; /* A bit shorter for better screen utilization */
-    }
+            /* Adjust map container height for mobile */
+            #mapContainer {
+                height: 200px; /* A bit shorter for better screen utilization */
+            }
 
-    /* Adjust button width for mobile */
-    button {
-        width: 100%;
-        margin-top: 20px;
-    }
-}
+            /* Adjust button width for mobile */
+            button {
+                width: 100%;
+                margin-top: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -361,48 +363,49 @@ button:hover {
 
        <div id="resultsSection" style="display: none; margin-top: 30px;">
     
-    <h2>Schedule for <span id="scheduleRouteName">Selected Route</span></h2>
-    <hr>
-    
-    <h3 style="margin-top: 15px;">Currently Active Buses: <span id="busCount">0</span></h3> 
-    <p style="font-size: 0.9em; color: #555;">(Click a card to begin real-time tracking and get arrival notifications)</p>
+        <h2>Schedule for <span id="scheduleRouteName">Selected Route</span></h2>
+        <hr>
+        
+        <h3 style="margin-top: 15px;">Currently Active Buses: <span id="busCount">0</span></h3> 
+        <p style="font-size: 0.9em; color: #555;">(Click a card to begin real-time tracking and get arrival notifications)</p>
 
-    <div id="busList">
-        </div>
-    <p id="noActiveMsg" style="color: gray; margin-top: 15px; display: none;">No buses currently running on this route.</p>
-    <hr>
-    
-    <h3 style="margin-top: 30px;">All Scheduled Trips</h3>
-    <table id="scheduledTripsTable" class="schedule-table">
-        <thead>
-            <tr>
-                <th>Departure Time</th>
-                <th>Actual Departure</th>
-                <th>Days Active</th>
-                <th>Bus Type</th>
-                <th>Service Type</th>
-                <th>Vehicle / Licence</th>
-                <th>Status / Reason</th>
-            </tr>
-        </thead>
-        <tbody id="scheduledTripsBody">
-            </tbody>
-    </table>
-    <p id="noScheduleMsg" style="color: gray; margin-top: 15px; display: none;">No schedules found for this route.</p>
-    <button onclick="showSearchSection()">Back to Search</button>
-</div>
+        <div id="busList">
+            </div>
+        <p id="noActiveMsg" style="color: gray; margin-top: 15px; display: none;">No buses currently running on this route.</p>
+        <hr>
+        
+        <h3 style="margin-top: 30px;">All Scheduled Trips</h3>
+        <table id="scheduledTripsTable" class="schedule-table">
+            <thead>
+                <tr>
+                    <th>Departure Time</th>
+                    <th>Actual Departure</th>
+                    <th>Days Active</th>
+                    <th>Bus Type</th>
+                    <th>Service Type</th>
+                    <th>Vehicle / Licence</th>
+                    <th>Status / Reason</th>
+                </tr>
+            </thead>
+            <tbody id="scheduledTripsBody">
+                </tbody>
+        </table>
+        <p id="noScheduleMsg" style="color: gray; margin-top: 15px; display: none;">No schedules found for this route.</p>
+        <button onclick="showSearchSection()">Back to Search</button>
+    </div>
+        
         <div id="detailSection" style="display: none;">
-            <!-- for calculating ETA -->
+            
             <strong>Estimated Arrival:</strong>
-            <span id="detailETA">Calculating...</span>   
-            <span id="detailLocation"></span>
-            <!-- live tracking -->
+            <span id="detailETA">Calculating...</span> 
+            
             <h3>Live Tracking Details</h3>
             <div class="detail-info">
                 <strong>Vehicle:</strong> <span id="detailVehicle"></span>
                 <br>
                 <strong>Status:</strong> <span id="detailStatus" class="status-badge"></span>
                 <br>
+                
                 <strong>Last Location:</strong> <span id="detailLocation"></span>
             </div>
             
@@ -413,7 +416,7 @@ button:hover {
 
     </div>
 
-   
+    
     <script src="script.js"></script> <script src="passenger.js"></script>
 </body>
 </html>

@@ -3,282 +3,343 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Authority Portal - Live Monitoring</title>
+    <title>Authority Portal </title>
     
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    
-    <style>
-        /* Authority Portal Specific Styles */
-        body { font-family: Arial, sans-serif; background-color: #f4f7f8; margin: 0; padding: 0;}
-        .container { max-width: 1200px; margin: 20px auto; padding: 20px; background-color: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; margin-bottom: 20px; }
-        .dashboard-stats { display: flex; justify-content: space-around; margin-bottom: 30px; }
-        .stat-card { 
-            background-color: #ecf0f1; 
-            padding: 20px; 
-            border-radius: 6px; 
-            text-align: center; 
-            flex: 1; 
-            margin: 0 10px;
-            min-width: 200px; 
-        }
-        .stat-card h3 { margin-top: 0; color: #7f8c8d; }
-        .stat-card .count { font-size: 2.5em; font-weight: bold; color: #3498db; }
-        
-        /* Table Styles */
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px 15px; border: 1px solid #ddd; text-align: left; }
-        th { background-color: #34495e; color: white; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        tr:hover { background-color: #f1f1f1; }
-        
-        /* Status Badges */
-        .status-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 0.85em; }
-        .status-Ontime { background-color: #2ecc71; color: white; }
-        .status-Delayed { background-color: #e74c3c; color: white; }
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
-        .logout-btn { 
-            float: right; 
-            background-color: #e74c3c; 
-            color: white; 
-            border: none; 
-            padding: 10px 15px; 
-            cursor: pointer; 
-            border-radius: 4px;
-            font-size: 1em;
-        }
+    <style>
+:root {
+    --primary-color: #4a90e2; /* Modern Blue */
+    --secondary-color: #50e3c2; /* Accent Green/Cyan */
+    --status-cancelled: #95a5a6; /* Grey/Muted for Cancelled */
+    --background-light: #f4f7f9; 
+    --card-background: #ffffff;
+    --text-dark: #3c4858;
+    --text-medium: #6b7a90;
+    --border-light: #e6ecf1;
+    --status-delayed: #e74c3c; /* Brighter Red */
+    --status-ontime: #2ecc71; /* Brighter Green */
+    --shadow-subtle: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* --- Base Styles --- */
+body {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--background-light);
+    color: var(--text-dark);
+    line-height: 1.6;
+    transition: background-color 0.3s;
+}
+
+/* --- Header --- */
+.authority-header {
+    padding: 20px 20px;
+    margin-top: 50px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.authority-header h3 {
+    margin: auto;
+    font-size: 2em;
+    font-weight: 900;
+    color: rgb(77, 124, 151);
+    letter-spacing: -0.5px;
+}
+.logout-btn {
+    background-color: var(--status-delayed);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 6px rgba(231, 76, 60, 0.4);
+}
+.logout-btn:hover {
+    background-color: #c0392b;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(231, 76, 60, 0.5);
+}
+
+/* --- Overview Cards --- */
+.overview-cards {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px;
+    gap: 10px;
+    max-width: 1000px;
+    margin: 20px auto;
+}
+.card {
+    flex: 1;
+    background-color: var(--card-background);
+    padding: 20px;
+    text-align: center;
+    border-radius: 10px;
+    box-shadow: var(--shadow-subtle);
+    min-width: 180px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    /* Default border for Active/Ontime */
+    border-left: 5px solid var(--primary-color); 
+}
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+}
+/* Specific card colors for left border */
+.card:nth-child(2) { border-left-color: var(--status-delayed); } /* Delayed */
+.card:nth-child(3) { border-left-color: var(--status-cancelled); } /* Cancelled */
+
+.card-title {
+    font-weight: 500;
+    font-size: 0.9em;
+    margin-bottom: 5px;
+    color: var(--text-medium);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.card-value {
+    font-size: 3.0em;
+    font-weight: 800;
+    color: var(--primary-color);
+    line-height: 1.1;
+}
+
+/* --- Activity Table --- */
+.activity-section {
+    padding: 0 20px 20px 20px;
+}
+.activity-header {
+    font-size: 1.5em;
+    font-weight: 700;
+    margin-bottom: 15px;
+    padding-left: 5px;
+    color: var(--text-dark);
+    margin-top: 80px;
+}
+.table-container {
+    overflow-x: auto;
+    background-color: var(--card-background);
+    border-radius: 10px;
+    box-shadow: var(--shadow-subtle);
+    margin-top: 20px;
+}
+.activity-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed; /* Ensures column widths are respected on desktop */
+}
+.activity-table th, .activity-table td {
+    padding: 10px 5px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-light);
+    /* Removed word-wrap: break-word; to fix vertical text on mobile */
+    font-size: 0.9em;
+}
+.activity-table th {
+    background-color: rgb(9, 4, 58);
+    font-weight: 600;
+    color: var(--text-medium);
+    text-transform: uppercase;
+    font-size: 0.8em;
+    letter-spacing: 0.5px;
+    color:white
+}
+.activity-table tr:hover {
+    background-color: #fafcfd;
+}
+
+/* Column Width Allocation (Adjusted for 7 columns) */
+.activity-table th:nth-child(1), .activity-table td:nth-child(1) { width: 15%; } /* Driver */
+.activity-table th:nth-child(2), .activity-table td:nth-child(2) { width: 12%; } /* Bus Name */
+.activity-table th:nth-child(3), .activity-table td:nth-child(3) { width: 12%; } /* Plate Number */
+.activity-table th:nth-child(4), .activity-table td:nth-child(4) { width: 13%; } /* Route Name */
+.activity-table th:nth-child(5), .activity-table td:nth-child(5) { width: 15%; } /* Scheduled Dep. */
+.activity-table th:nth-child(6), .activity-table td:nth-child(6) { width: 15%; } /* Actual Dep. */
+.activity-table th:nth-child(7), .activity-table td:nth-child(7) { width: 18%; } /* Status */
+
+
+/* --- Status Badges and Row Colors --- */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 50px;
+    font-size: 0.75em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 60px;
+    justify-content: center;
+}
+.Delayed {
+    color: white;
+    background-color: var(--status-delayed);
+    box-shadow: 0 2px 4px rgba(231, 76, 60, 0.3);
+}
+.Ontime {
+    color: white;
+    background-color: var(--status-ontime);
+    box-shadow: 0 2px 4px rgba(46, 204, 113, 0.3);
+}
+.Cancelled {
+    color: white;
+    background-color: var(--status-cancelled);
+    box-shadow: 0 2px 4px rgba(149, 165, 166, 0.3);
+}
+
+.activity-table tr.delayed-row {
+     background-color: #fff6f6;
+}
+.activity-table tr.cancelled-row {
+     background-color: #f7f9f9;
+}
+
+/* -----------------------------------------------------------------
+   --- Mobile Responsiveness ---
+   ----------------------------------------------------------------- */
+@media (max-width: 1024px) {
+    .overview-cards {
+        flex-wrap: wrap;
+        padding: 15px;
+        gap: 15px;
+    }
+    /* Three cards per row on tablets/small laptops */
+    .card {
+        flex: 1 1 calc(33% - 15px); 
+        min-width: unset;
+    }
+}
+@media (max-width: 600px) {
+    .authority-header h3 {
+        font-size: 1.4em;
+    }
+    .overview-cards {
+        flex-direction: column; /* Stack cards vertically on small phones */
+        padding: 10px;
+        gap: 10px;
+    }
+    .card {
+        flex: 1 1 100%;
+        text-align: center;
+    }
+    .activity-section {
+        padding: 0 10px 10px 10px;
+    }
+
+    /* 🟢 TABLE RESTRUCTURING FOR MOBILE 🟢 */
+    .activity-table {
+        border: none;
+        table-layout: auto;
+    }
+    
+    .activity-table thead {
+        /* Hide desktop header */
+        display: none; 
+    }
+
+    .activity-table, .activity-table tbody, .activity-table tr, .activity-table td {
+        display: block; /* Stack elements */
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .activity-table tr {
+        margin-bottom: 15px; /* Added spacing between rows/cards */
+        border: 1px solid var(--border-light);
+        border-radius: 8px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        padding: 10px 0;
+        background-color: var(--card-background);
+    }
+    
+    .activity-table tr:hover {
+        background-color: var(--card-background); 
+    }
+
+    .activity-table td {
+        /* Pushes data content right, making space for label */
+        text-align: right; 
+        padding-left: 55%; /* Adjusted padding for better label/data separation */
+        position: relative;
+        border-bottom: 1px dashed var(--border-light);
+        min-height: 40px;
+    }
+    
+    .activity-table tr td:last-child {
+        border-bottom: 0;
+    }
+
+    /* 🟢 Pseudo-elements for Labels (Left side) 🟢 */
+    .activity-table td::before {
+        content: attr(data-label); /* Requires JS to set data-label attribute */
+        position: absolute;
+        left: 10px;
+        width: 50%; /* Gives the label enough room */
+        padding-right: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-align: left; 
+        font-weight: 600;
+        color: var(--text-dark);
+        text-transform: uppercase;
+        font-size: 0.8em;
+    }
+}
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <button class="logout-btn" onclick="logout()">Logout</button>
-        <h1>📊 Authority Portal - Live Trip Overview</h1>
-
-        <div class="dashboard-stats">
-            <div class="stat-card">
-                <h3>**Active Trips**</h3>
-                <div class="count" id="activeTripsCount">0</div>
-            </div>
-            <div class="stat-card">
-                <h3>**Delayed Trips**</h3>
-                <div class="count" id="delayedTripsCount">0</div>
-            </div>
-        </div>
-
-        <h2>👨‍✈️ Live Driver Activity</h2>
-        <table id="driverActivityTable">
-            <thead>
-                <tr>
-                    <th>**Driver Username**</th> <th>Bus Name</th>
-                    <th>Plate Number</th>
-                    <th>Route Name</th>
-                    <th>Scheduled Departure Time</th>
-                    <th>Actual Departure Time</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="driverActivityBody">
-                <tr><td colspan="7" style="text-align: center;">Loading live data...</td></tr>
-            </tbody>
-        </table>
-
+    <div class="authority-header">
+        <h3> Authority Portal</h3>
+        <button class="logout-btn">Logout</button>
     </div>
 
-    <script>
-        // *** FIREBASE CONFIGURATION (Use the one from your script.js) ***
-        const firebaseConfig = {
-            apiKey: "AIzaSyAF8Vq1SX1vnb3nJfszWDYYZQ1MbJVwMXQ",
-            authDomain: "nimbus-27588.firebaseapp.com",
-            projectId: "nimbus-27588",
-            storageBucket: "nimbus-27588.firebasestorage.app",
-            messagingSenderId: "582331828095",
-            appId: "1:582331828095:web:62b276f03f25e9ba937c4a",
-            measurementId: "G-73M7E8ZF4N"
-        };
+    <div class="overview-cards">
+        <div class="card active-trips-card">
+            <div class="card-title">Active Trips</div>
+            <div id="activeTripsCount" class="card-value">-</div> 
+        </div>
+        <div class="card delayed-trips-card">
+            <div class="card-title">Delayed Trips</div>
+            <div id="delayedTripsCount" class="card-value">-</div>
+        </div>
+        <div class="card cancelled-trips-card">
+            <div class="card-title">Cancelled Trips</div>
+            <div id="cancelledTripsCount" class="card-value">-</div>
+        </div>
+    </div>
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
-        }
-        
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        // --- HELPER FUNCTIONS ---
-
-        function getStatusClass(status) {
-            switch (status) {
-                case 'Ontime': return 'status-Ontime';
-                case 'Delayed': return 'status-Delayed';
-                default: return ''; 
-            }
-        }
-
-        function formatTimestampToTime(timestamp) {
-            if (!timestamp || !timestamp.toDate) return 'N/A';
-            const date = timestamp.toDate(); 
-            // Use current user's locale for display
-            return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-        }
-
-        // --- LOGOUT FUNCTION ---
-        function logout() {
-            auth.signOut().then(() => {
-                alert("Logged out successfully.");
-                window.location.href = 'index.html'; // Redirect to the main login/selection page
-            }).catch((error) => {
-                console.error("Logout Error:", error);
-                alert("Error logging out.");
-            });
-        }
-        
-        // --- DATA FETCHING & RENDERING (Real-Time Listener) ---
-
-        async function startLiveMonitoring() {
-            // Check if user is logged in and is an Authority before proceeding
-            auth.onAuthStateChanged(async (user) => {
-                if (!user) {
-                    alert("Access Denied. Please log in as an Authority.");
-                    window.location.href = 'index.html';
-                    return;
-                }
-                
-                try {
-                    // 1. Get initial data for lookups
-                    const [routesSnapshot, usersSnapshot, vehiclesSnapshot] = await Promise.all([
-                        db.collection('routes').get(),
-                        // *** FIX: Fetch from 'users' collection and filter for Drivers ***
-                        db.collection('users').where('role', '==', 'Driver').get(), 
-                        db.collection('vehicles').get()
-                    ]);
-
-                    // Convert snapshots to lookup maps: { [docId]: docData }
-                    const routes = routesSnapshot.docs.reduce((acc, doc) => { acc[doc.id] = doc.data(); return acc; }, {});
-                    const vehicles = vehiclesSnapshot.docs.reduce((acc, doc) => { 
-                        acc[doc.id] = { 
-                            display_name: doc.data().display_name || 'Bus Missing', 
-                            license_plate: doc.data().license_plate || 'Plate Missing',
-                            ...doc.data()
-                        }; 
-                        return acc; 
-                    }, {});
-                    
-                    // Create the 'drivers' lookup map from the filtered 'users' snapshot
-                    const drivers = usersSnapshot.docs.reduce((acc, doc) => { 
-                        // **SUCCESSFUL LOOKUP:** Uses the 'username' field stored during signup.
-                        acc[doc.id] = { 
-                            username: doc.data().username || doc.data().email || doc.id, 
-                            ...doc.data() 
-                        }; 
-                        return acc; 
-                    }, {});
-
-
-                    // 2. Set up Real-Time Listener on 'trips' collection
-                    db.collection('trips')
-                        // Only monitor trips that are currently running or pending
-                        .where('current_status', 'in', ['Ontime', 'Delayed']) 
-                        .onSnapshot(snapshot => {
-                            const activeTripsData = [];
-                            let delayedCount = 0;
-                            
-                            snapshot.forEach(doc => {
-                                const trip = doc.data();
-                                
-                                // --- Trip Details Lookup ---
-                                const driverId = trip.driver_id;
-                                const vehicleId = trip.vehicle_id;
-                                const routeId = trip.route_id;
-
-                                // Lookup data using the maps
-                                const driverData = drivers[driverId] || { username: 'N/A (Driver Not Found)' }; 
-                                const vehicleData = vehicles[vehicleId] || { display_name: 'N/A', license_plate: 'N/A' };
-                                const routeData = routes[routeId] || { routename: 'N/A' }; 
-
-                                // --- Time Formatting ---
-                                const scheduledTime = formatTimestampToTime(trip.scheduled_departure_time);
-                                const actualTime = formatTimestampToTime(trip.actual_departure_time); 
-
-                                // --- Count Delayed Trips ---
-                                if (trip.current_status === 'Delayed') {
-                                    delayedCount++;
-                                }
-
-                                // --- Create consolidated data object for the table ---
-                                activeTripsData.push({
-                                    driverUsername: driverData.username, // Correctly pulls the username
-                                    busName: vehicleData.display_name,
-                                    plateNumber: vehicleData.license_plate,
-                                    routeName: routeData.routename || 'N/A', 
-                                    scheduledTime: scheduledTime,
-                                    actualTime: actualTime, 
-                                    status: trip.current_status,
-                                });
-                            });
-
-                            // --- Update Dashboard Stats ---
-                            document.getElementById('activeTripsCount').textContent = activeTripsData.length;
-                            document.getElementById('delayedTripsCount').textContent = delayedCount;
-                            
-                            // --- Update Table ---
-                            renderDriverActivityTable(activeTripsData);
-                        }, error => {
-                            console.error("Firestore Listen Error:", error);
-                            // This usually indicates a security rule issue
-                            renderDriverActivityTable([]); 
-                            document.getElementById('driverActivityBody').innerHTML = '<tr><td colspan="7" style="color: red; text-align: center;">Error loading data. Check Security Rules/Console.</td></tr>';
-                        });
-
-                } catch (error) {
-                    console.error("Initial Data Load Error:", error);
-                    alert("Failed to load initial lookup data (routes, users, vehicles). Check Firebase config and security rules.");
-                }
-            });
-        }
-
-
-        function renderDriverActivityTable(trips) {
-            const tableBody = document.getElementById('driverActivityBody');
-            tableBody.innerHTML = '';
-
-            // Sort by status (Delayed first) then by Scheduled Time
-            trips.sort((a, b) => {
-                if (a.status === 'Delayed' && b.status !== 'Delayed') return -1;
-                if (a.status !== 'Delayed' && b.status === 'Delayed') return 1;
-                return a.scheduledTime.localeCompare(b.scheduledTime);
-            });
-
-            if (trips.length === 0) {
-                 tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No active trips found.</td></tr>';
-                 return;
-            }
-
-            trips.forEach(trip => {
-                const statusClass = getStatusClass(trip.status);
-                
-                const row = `
+    <div class="activity-section">
+        <div class="activity-header"> Live Driver Activity</div>
+        <div class="table-container">
+            <table class="activity-table">
+                <thead>
                     <tr>
-                        <td>**${trip.driverUsername}**</td>
-                        <td>${trip.busName}</td>
-                        <td>${trip.plateNumber}</td>
-                        <td>${trip.routeName}</td>
-                        <td>${trip.scheduledTime}</td>
-                        <td>${trip.actualTime}</td>
-                        <td><span class="status-badge ${statusClass}">${trip.status}</span></td>
+                        <th>Driver Username</th>
+                        <th>Bus Name</th>
+                        <th>Plate Number</th>
+                        <th>Route Name</th>
+                        <th>Scheduled Time</th>
+                        <th>Actual Departure Time</th>
+                        <th>Status</th>
                     </tr>
-                `;
-                tableBody.innerHTML += row;
-            });
-        }
-
-
-        // --- MAIN EXECUTION ---
-        document.addEventListener('DOMContentLoaded', () => {
-            startLiveMonitoring();
-        });
-    </script>
-
+                </thead>
+                <tbody id="liveActivityBody">
+                    <tr><td colspan="7" style="text-align:center;">Loading live trip data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script src="authority.js"></script>
+    <script src="driver.js"></script> 
 </body>
 </html>

@@ -15,76 +15,40 @@ body {
   min-height: 100vh;
 }
 /* Must be placed outside any selector like h1 */
-@property --color-start {
-    syntax: '<color>';
-    initial-value: #16A085;
-    inherits: false;
-}
-
-@property --color-end {
-    syntax: '<color>';
-    initial-value: #27AE60;
-    inherits: false;
-}
-@keyframes gradientShift {
-    0% {
-        --color-start: #16A085;
-        --color-end: #27AE60;
-    }
-    33% {
-        --color-start: #795e85; /* Blue */
-        --color-end:  #9a81a5;
-    }
-    66% {
-        --color-start:#486580;
-        --color-end: #5c7d9b;
-    }
-    100% {
-        --color-start: #16A085; 
-        --color-end: #27AE60;
-    }
-}
-/* Ensure your fadeInUp keyframes are still present */
-@keyframes fadeInUp {
-    0% {
-        transform: translateY(20px);
-        opacity: 0;
-    }
-    100% {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
 h1 {
-    /* Stylish Typography */
-    font-family: 'Poppins', sans-serif;
-    font-size: 4.5em;
+    font-size: clamp(3rem, 10vw, 6.5rem); /* Slightly larger max size */
     font-weight: 900;
+    line-height: 1.0; /* Tighten line height */
+    text-align: center;
+    cursor: default;
+    transition: 
+        transform 0.4s ease-out, 
+        text-shadow 0.4s ease-out,
+        letter-spacing 0.4s ease-out; /* Smooth transitions */
+    max-width: 90%;
+    margin-top: 30px; /* More vertical space */
+    margin-bottom: 40px;
+
+    /* 💡 NEON GRADIENT (Kept the same high-contrast palette) */
+    background-image: linear-gradient(
+        45deg,
+        #00eaff 20%, /* Cyan Neon */
+        #ff00e5 50%, /* Magenta Neon */
+        #ff6b00 80%  /* Orange Neon */
+    );
     
-    /* FIX: Use custom properties in the background definition */
-    background: linear-gradient(90deg, var(--color-start) 0%, var(--color-end) 100%);
-    
-    /* ESSENTIAL CLIPPING (Kept separate from the keyframes) */
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    
-    /* Layout & Polish (Retained) */
-    text-transform: uppercase;
-    letter-spacing: 2px;
-    margin: 0.7em 0 0.3em 0; 
-    
-    /* Animation Application (Combined) */
-    animation: 
-        fadeInUp 0.8s ease-out 0.2s forwards,
-        gradientShift 3s ease-in-out 1s infinite alternate; 
+    background-clip: text;
 
-    /* Initial State */
-    opacity: 0;
+    /* Default Holographic Shadow (Subtle offset glow) */
+    text-shadow: 
+        1px 1px 3px rgba(0, 234, 255, 0.4),  /* Cyan offset */
+        -1px -1px 3px rgba(255, 0, 229, 0.4), /* Magenta offset */
+        0 0 10px rgba(255, 255, 255, 0.1); /* White core glow */
+    
+    letter-spacing: -3.5px; /* Extremely tight */
 }
-/* .bus_icon{
-  height:90px;
-  width:auto;
-} */
 
 .subtitle {
   font-size: 1rem;

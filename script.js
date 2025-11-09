@@ -82,6 +82,10 @@ function displayError(message) {
 // 3. FIREBASE AUTHENTICATION HANDLER (FOR DRIVER/AUTHORITY ONLY)
 // ----------------------------------------------------------------------
 
+// ----------------------------------------------------------------------
+// 3. FIREBASE AUTHENTICATION HANDLER (FOR DRIVER/AUTHORITY ONLY)
+// ----------------------------------------------------------------------
+
 function handleAuth(event) {
     event.preventDefault();
 
@@ -119,11 +123,27 @@ function handleAuth(event) {
     submitButton.disabled = true;
     submitButton.innerText = currentMode === 'login' ? 'Logging in...' : 'Signing up...';
 
-    const authPromise = currentMode === 'signup'
-        ? auth.createUserWithEmailAndPassword(email, password)
-        : auth.signInWithEmailAndPassword(email, password);
+    // --- NEW LOGIC START: Check License Before Signup ---
+    const preAuthPromise = (currentMode === 'signup' && currentRole === 'Driver')
+        ? db.collection("drivers").where('license', '==', license).limit(1).get()
+            .then(snapshot => {
+                if (snapshot.empty) {
+                    // Fail signup if license is not found in the 'drivers' collection
+                    throw new Error("License not found in records. Driver signup requires a pre-registered license number.");
+                }
+                // License found, proceed to Firebase Auth creation
+                return Promise.resolve(); 
+            })
+        : Promise.resolve(); // For login or Authority signup, resolve immediately
+    // --- NEW LOGIC END ---
 
-    authPromise
+    preAuthPromise
+        .then(() => {
+            // IF PRE-AUTH IS SUCCESSFUL (OR SKIPPED), PROCEED WITH AUTH
+            return currentMode === 'signup'
+                ? auth.createUserWithEmailAndPassword(email, password)
+                : auth.signInWithEmailAndPassword(email, password);
+        })
         .then((userCredential) => {
             const user = userCredential.user;
             
@@ -137,25 +157,25 @@ function handleAuth(event) {
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                // 🔑 2. If Driver, save ONLY license in the 'drivers' collection 🔑
-                // NOTE: This assumes you will manually update the 'drivers' document (driver1, driver2, etc.)
-                //       with the user's UID later for proper security and linking.
-                let driverSetupPromise = Promise.resolve();
+                // 2. Update the 'drivers' document with the user's UID for linking (RECOMMENDED)
+                // This step links the pre-registered license document to the new user.
+                let driverUpdatePromise = Promise.resolve();
                 if (currentRole === 'Driver' && license) {
-                    
-                    // First, try to find an *unlinked* document with this license (e.g., driver1)
-                    // This is complex for a signup, so for a simple signup flow, we assume 
-                    // the license is checked against existing records by the admin. 
-                    // To proceed with your current structure, we'll skip writing the license 
-                    // during signup, as it should be pre-created by the admin.
-                    // If you want users to *create* the license record on signup:
-                    // driverSetupPromise = db.collection("drivers").add({ license: license, uid: user.uid, ... });
-                    
-                    // **FOR NOW, WE ONLY SAVE TO USERS. ADMIN MUST MANUALLY CREATE THE drivers/driverX record.**
-                    // If you intended the user to CREATE the document, you should use .add() instead of .doc(user.uid).set()
+                     // We already checked for the license's existence in preAuthPromise, 
+                     // so we can now query it again to get the document reference.
+                    driverUpdatePromise = db.collection("drivers").where('license', '==', license).limit(1).get()
+                        .then(snapshot => {
+                            if (!snapshot.empty) {
+                                // Update the first (and only) matching driver document with the new user's UID
+                                const driverDocRef = snapshot.docs[0].ref;
+                                return driverDocRef.update({ uid: user.uid }); // Link the account
+                            }
+                            // Should not happen due to the check earlier, but good to handle
+                            return Promise.resolve();
+                        });
                 }
                 
-                return Promise.all([userSetupPromise, driverSetupPromise])
+                return Promise.all([userSetupPromise, driverUpdatePromise])
                     .then(() => {
                         return user.updateProfile({ displayName: username });
                     });
@@ -163,6 +183,8 @@ function handleAuth(event) {
             return user; // Return user for the login scenario
         })
         .then(async (user) => {
+            // ... (rest of the login/redirection logic remains the same) ...
+            
             // CHECK ROLE & LICENSE during LOGIN
             if (currentMode === 'login') {
                 
@@ -213,6 +235,7 @@ function handleAuth(event) {
             }
         })
         .catch((error) => {
+            // ... (rest of the error handling remains the same) ...
             let errorMessage = error.message;
 
             if (error.code) {
@@ -236,7 +259,7 @@ function handleAuth(event) {
             submitButton.disabled = false;
             submitButton.innerText = currentMode === 'login' ? 'Login' : 'Signup';
 
-            if (errorMessage.includes("Access Denied") || errorMessage.includes("License number mismatch")) {
+            if (errorMessage.includes("Access Denied") || errorMessage.includes("License number mismatch") || errorMessage.includes("License not found")) {
                 setMode('login'); 
             }
 

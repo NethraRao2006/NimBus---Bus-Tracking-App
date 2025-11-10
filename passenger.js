@@ -117,7 +117,6 @@ function toggleLocationInput() {
 
 /**
  * FIX: Use getCurrentPosition for a one-time, high-accuracy location snapshot.
- * This is better than watchPosition which is typically for continuous use (like a driver).
  */
 function getLiveLocation() {
     const locationInput = document.getElementById('currentLocationInput');
@@ -233,6 +232,7 @@ async function loadRoutesForSelection() {
 
     try {
         const routesSnapshot = await db.collection('routes').get();
+        // Assume route documents have a 'stop_ids' array: { id: 'R1', routename: 'Puttur-Vitla', stop_ids: ['S1', 'S5', 'S10'] }
         allRoutes = routesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         routeSelect.innerHTML = '<option value="">Select Route</option>';
@@ -241,12 +241,14 @@ async function loadRoutesForSelection() {
         });
         
         const stopsSnapshot = await db.collection('stops').get();
+        // Stop documents: { id: 'S1', name: 'Puttur Bus Stand', latitude: ... }
         allStops = stopsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
-        notifStopSelect.innerHTML = '<option value="">Select Stop for Notifications</option>';
-        allStops.forEach(stop => {
-            notifStopSelect.innerHTML += `<option value="${stop.id}">${stop.name}</option>`;
-        });
+        // Initial state: empty or 'Select Route First'
+        notifStopSelect.innerHTML = '<option value="">Select Route First</option>';
+
+        // Attach the new listener to filter stops when a route is selected
+        routeSelect.addEventListener('change', filterStopsForRoute);
 
     } catch (error) {
         console.error("Error loading routes/stops:", error);
@@ -254,6 +256,42 @@ async function loadRoutesForSelection() {
         notifStopSelect.innerHTML = '<option value="">Failed to load stops</option>';
     }
 }
+
+/**
+ * Filters the available stops for notification based on the currently selected route.
+ * Assumes 'routes' documents have a 'stop_ids' array field.
+ */
+function filterStopsForRoute() {
+    const routeId = document.getElementById('routeSelect').value;
+    const notifStopSelect = document.getElementById('notificationStopSelect');
+    
+    // Clear the current stops dropdown
+    notifStopSelect.innerHTML = '';
+
+    if (!routeId) {
+        notifStopSelect.innerHTML = '<option value="">Select Route First</option>';
+        return;
+    }
+
+    // Find the selected route object
+    const selectedRoute = allRoutes.find(r => r.id === routeId);
+
+    if (selectedRoute && selectedRoute.stop_ids && selectedRoute.stop_ids.length > 0) {
+        // Filter the global allStops array to include only stops whose ID is in the route's stop_ids list
+        const filteredStops = allStops.filter(stop => 
+            selectedRoute.stop_ids.includes(stop.id)
+        );
+
+        notifStopSelect.innerHTML = '<option value="">Select Stop for Notifications</option>';
+        filteredStops.forEach(stop => {
+            // Populate the dropdown with only the stops for this route
+            notifStopSelect.innerHTML += `<option value="${stop.id}">${stop.name}</option>`;
+        });
+    } else {
+        notifStopSelect.innerHTML = '<option value="">No Stops Defined for this Route</option>';
+    }
+}
+
 
 /**
  * The core function for fetching and maintaining real-time status of schedules.

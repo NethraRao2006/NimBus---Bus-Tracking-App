@@ -351,99 +351,98 @@ async function searchBuses() {
         // The base schedules array, containing static vehicle defaults
         const baseSchedules = await Promise.all(schedulePromises);
         
+        // Create a lookup map for schedules based on their ID (scheduled_slot_id)
+        const scheduleLookup = {};
+        baseSchedules.forEach(s => scheduleLookup[s.id] = s);
+
         // 2. Attach a REAL-TIME listener to the 'trips' collection
+        // 🚨 IMPORTANT: You may want to add a filter here for 'current_status' != 'Completed'
         trackingListener = db.collection('trips')
             .where('route_id', '==', routeId)
             .onSnapshot(async (liveTripsSnapshot) => { 
                 
-                // Create a FRESH copy of the base schedules for each update cycle
+                // Initialize the trips list using the base schedules. 
+                // We clone it to add *all* scheduled entries first.
                 let mergedTrips = JSON.parse(JSON.stringify(baseSchedules));
-
-                const allRecentTrips = liveTripsSnapshot.docs.map(doc => {
-                    const trip = doc.data();
-                    trip.id = doc.id;
-                    return trip;
-                });
                 
-                // 3. Merge the live trip data with the base schedule data
+                // Keep track of which schedule slots are occupied by a live trip
+                const occupiedScheduleIds = new Set();
+
+                const allRecentTrips = liveTripsSnapshot.docs.map(doc => ({ 
+                    id: doc.id, // This is the live trip ID
+                    ...doc.data()
+                }));
+                
+                // Array to hold the NEW live trip entries (if different from base schedule)
+                let activeTripEntries = [];
+
+                // 3. Process and merge the live trip data
                 for (const trip of allRecentTrips) { 
-                    const scheduleIndex = mergedTrips.findIndex(s => s.id === trip.scheduled_slot_id);
-                    
-                    if (scheduleIndex !== -1) {
-                        const scheduleEntry = mergedTrips[scheduleIndex];
+                    const scheduledSlotId = trip.scheduled_slot_id;
+                    const scheduleEntry = scheduleLookup[scheduledSlotId];
 
-                        // CRITICAL: Handle status updates from the live trip document
-                        if (['Ontime', 'Delayed'].includes(trip.current_status)) {
-                            
-                            // Re-fetch vehicle details from the trip document if they differ from default
-                            if (trip.vehicle_id && trip.vehicle_id !== scheduleEntry.default_vehicle_id) {
-                                const vehicleDoc = await db.collection('vehicles').doc(trip.vehicle_id).get();
-                                if (vehicleDoc.exists) {
-                                    const vehicleData = vehicleDoc.data();
-                                    scheduleEntry.vehicleName = vehicleData.display_name || 'N/A';
-                                    scheduleEntry.licensePlate = vehicleData.license_plate || 'N/A';
-                                    scheduleEntry.bus_type = vehicleData.bus_type || 'N/A';
-                                    scheduleEntry.service_type = vehicleData.service_type || 'N/A';
-                                }
-                            }
-
-                            // Overwrite schedule status and live data
-                            scheduleEntry.current_status = trip.current_status;
-                            scheduleEntry.last_status_reason = trip.last_status_reason;
-                            scheduleEntry.actual_departure_time = trip.actual_departure_time; 
-                            scheduleEntry.live_trip_id = trip.id; 
-                            scheduleEntry.last_known_location = trip.last_known_location;
-                            
-                        } else if (trip.current_status === 'Cancelled') {
-                            // If cancelled, update the status and reason
-                            scheduleEntry.current_status = 'Cancelled';
-                            scheduleEntry.last_status_reason = trip.last_status_reason;
-                            scheduleEntry.live_trip_id = trip.id;
-                            
-                        } else if (trip.current_status === 'Completed') {
-                            // If completed, reset to 'Scheduled' state, retaining original default vehicle info
-                            scheduleEntry.current_status = 'Scheduled';
-                            scheduleEntry.live_trip_id = null;
-                            scheduleEntry.last_known_location = null;
-                            scheduleEntry.actual_departure_time = null;
-                            scheduleEntry.last_status_reason = null;
-                            
-                            // Ensure default vehicle info is restored from baseSchedules
-                            const originalSchedule = baseSchedules.find(s => s.id === trip.scheduled_slot_id);
-                            if (originalSchedule) {
-                                scheduleEntry.vehicleName = originalSchedule.vehicleName;
-                                scheduleEntry.licensePlate = originalSchedule.licensePlate;
-                                scheduleEntry.bus_type = originalSchedule.bus_type;
-                                scheduleEntry.service_type = originalSchedule.service_type;
-                            }
+                    // Check if this live trip is actually an active one to display
+                    if (['Ontime', 'Delayed', 'Cancelled'].includes(trip.current_status)) {
+                        
+                        // Create a new object that starts with the scheduled data
+                        let displayEntry = scheduleEntry ? JSON.parse(JSON.stringify(scheduleEntry)) : {};
+                        
+                        // Overwrite schedule data with live trip data
+                        displayEntry.current_status = trip.current_status;
+                        displayEntry.last_status_reason = trip.last_status_reason || null;
+                        displayEntry.actual_departure_time = trip.actual_departure_time || null;
+                        displayEntry.live_trip_id = trip.id; 
+                        displayEntry.last_known_location = trip.last_known_location || null;
+                        
+                        // Set the slot as occupied
+                        occupiedScheduleIds.add(scheduledSlotId);
+                        
+                        // Re-fetch vehicle details from the trip document if they differ from default
+                        // (We need to re-fetch vehicle details in every listener cycle for the live data)
+                        if (trip.vehicle_id) {
+                             const vehicleDoc = await db.collection('vehicles').doc(trip.vehicle_id).get();
+                             if (vehicleDoc.exists) {
+                                 const vehicleData = vehicleDoc.data();
+                                 displayEntry.vehicleName = vehicleData.display_name || 'N/A';
+                                 displayEntry.licensePlate = vehicleData.license_plate || 'N/A';
+                                 displayEntry.bus_type = vehicleData.bus_type || 'N/A';
+                                 displayEntry.service_type = vehicleData.service_type || 'N/A';
+                             }
                         }
+                        
+                        // 🚨 CRITICAL FIX: Add the unique live trip entry to the list
+                        activeTripEntries.push(displayEntry);
+
                     }
                 }
                 
+                // 4. Combine: Filter out original base schedules that are now ACTIVE live trips, 
+                // and then add the list of active live trips.
+                
+                // Start with non-occupied (scheduled or completed) base entries
+                let finalTrips = mergedTrips.filter(s => !occupiedScheduleIds.has(s.id));
+                
+                // Add all the active/cancelled live trip entries
+                finalTrips = finalTrips.concat(activeTripEntries);
+                
                 // ⭐ SORTING STEP ⭐
-                // Sort by license plate, then by scheduled time
-                mergedTrips.sort((a, b) => {
-                    const plateA = a.licensePlate.toUpperCase();
-                    const plateB = b.licensePlate.toUpperCase();
-                    if (plateA < plateB) {
-                        return -1;
-                    }
-                    if (plateA > plateB) {
-                        return 1;
-                    }
+                // Sort by scheduled time primarily, and use license plate as secondary sort (optional, but kept your original logic)
+                finalTrips.sort((a, b) => {
                     const timeA = a.time || 'ZZZZ';
                     const timeB = b.time || 'ZZZZ';
-                    if (timeA < timeB) {
-                        return -1;
-                    }
-                    if (timeA > timeB) {
-                        return 1;
-                    }
+                    if (timeA < timeB) { return -1; }
+                    if (timeA > timeB) { return 1; }
+                    
+                    const plateA = a.licensePlate.toUpperCase();
+                    const plateB = b.licensePlate.toUpperCase();
+                    if (plateA < plateB) { return -1; }
+                    if (plateA > plateB) { return 1; }
+                    
                     return 0;
                 });
 
                 // Render the results with the live updates
-                renderResults(mergedTrips, routeId);
+                renderResults(finalTrips, routeId);
 
             }, error => {
                 console.error("Error in real-time trips listener:", error);
@@ -529,9 +528,13 @@ function renderScheduleTable(mergedTrips) {
     });
 }
 
-
 function renderResults(mergedTrips, routeId) {
+    // 💡 mergedTrips now contains: 
+    // 1. All static schedules that haven't started a live trip (current_status: 'Scheduled')
+    // 2. All unique active/cancelled live trip records (current_status: 'Ontime', 'Delayed', 'Cancelled')
     const scheduledTrips = mergedTrips; 
+    
+    // This correctly filters the combined list to find ONLY the live, trackable buses.
     const activeTrips = mergedTrips.filter(t => t.current_status === 'Ontime' || t.current_status === 'Delayed');
 
     const route = allRoutes.find(r => r.id === routeId);
@@ -540,6 +543,7 @@ function renderResults(mergedTrips, routeId) {
     document.getElementById('searchSection').style.display = 'none';
     document.getElementById('resultsSection').style.display = 'block';
     
+    // This renders the full table (all scheduled, cancelled, and active trips)
     renderScheduleTable(scheduledTrips);
 
     const busList = document.getElementById('busList');
@@ -551,12 +555,15 @@ function renderResults(mergedTrips, routeId) {
         document.getElementById('noActiveMsg').style.display = 'block';
     } else {
         document.getElementById('noActiveMsg').style.display = 'none';
+        
+        // This loop correctly iterates over every uniquely active bus found.
         activeTrips.forEach(trip => {
             const statusClass = getStatusClass(trip.current_status);
             const locationText = trip.last_known_location ? (`${trip.last_known_location.latitude.toFixed(4)}, ${trip.last_known_location.longitude.toFixed(4)}`) : 'Location pending.';
 
             const card = document.createElement('div');
             card.className = 'result-card';
+            // IMPORTANT: The live_trip_id is now unique for every active bus!
             card.setAttribute('onclick', `showDetails('${trip.live_trip_id}', '${trip.vehicleName}')`); 
 
             const detailText = (trip.current_status === 'Delayed' && trip.last_status_reason) 
@@ -579,7 +586,6 @@ function renderResults(mergedTrips, routeId) {
         });
     }
 }
-
 
 // --- TRACKING FUNCTIONS ---
 function showDetails(tripId, vehicleName) {
